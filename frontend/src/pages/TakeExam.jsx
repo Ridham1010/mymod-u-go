@@ -550,7 +550,7 @@ const TakeExam = () => {
           </div>
 
           <div className="proctoring-notice">
-            <h3>⚠️ Proctoring Notice</h3>
+            <h3>Proctoring Notice</h3>
             <ul>
               <li>Your webcam will be enabled during the exam</li>
               <li>Tab switching and window focus will be monitored</li>
@@ -599,10 +599,12 @@ const TakeExam = () => {
 
       <div className="exam-warnings">
         <span>
-          ⚠️ Tab: {tabSwitchCount} | FS Exit: {fullscreenExitCount}
+          Tab: {tabSwitchCount} | FS Exit: {fullscreenExitCount}
         </span>
         {!isFullscreen && (
-          <span className="warning-text"> | ⚠️ Return to fullscreen</span>
+          <button className="btn-fullscreen" onClick={requestFullscreen}>
+            Return to fullscreen
+          </button>
         )}
         {autoSaveStatus && (
           <span className="auto-save-status"> | {autoSaveStatus}</span>
@@ -616,9 +618,16 @@ const TakeExam = () => {
           muted
           playsInline
           className="webcam-preview"
+          style={{
+            width: "160px",
+            height: "120px",
+            objectFit: "cover",
+            borderRadius: "8px",
+            background: "#000",
+          }}
         />
         <canvas ref={canvasRef} style={{ display: "none" }} />
-        {!webcamEnabled && <span className="webcam-warning">⚠️ No webcam</span>}
+        {!webcamEnabled && <span className="webcam-warning">No webcam</span>}
       </div>
 
       <div className="question-nav">
@@ -713,7 +722,7 @@ const TakeExam = () => {
             }
             className="btn-nav"
           >
-            ← Previous
+            Previous
           </button>
 
           {currentQuestion < exam.questions.length - 1 ? (
@@ -721,7 +730,7 @@ const TakeExam = () => {
               onClick={() => goToQuestion(currentQuestion + 1)}
               className="btn-nav btn-next"
             >
-              Next →
+              Next
             </button>
           ) : (
             <button
@@ -746,13 +755,6 @@ const TakeExam = () => {
             Saved: {lastAutoSave.toLocaleTimeString()}
           </div>
         )}
-        <button
-          onClick={() => handleSubmit(false)}
-          className="btn-submit-footer"
-          disabled={submitting || timeRemaining === 0}
-        >
-          Submit
-        </button>
       </div>
     </div>
   );

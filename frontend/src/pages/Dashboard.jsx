@@ -48,7 +48,7 @@ const Dashboard = () => {
   const markNotificationRead = async (notificationId) => {
     try {
       const token = await getAuthToken();
-      await examService.markNotificationRead(notificationId, token);
+      await examService.markNotificationRead(token, notificationId);
       setNotifications(notifications.filter((n) => n._id !== notificationId));
     } catch (error) {
       console.error("Error marking notification read:", error);
@@ -84,7 +84,7 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
       <header className="dashboard-header">
-        <h1>MOD-U-GO</h1>
+        <h1 className="brand">MOD-U-GO</h1>
         <nav className="header-nav">
           <Link to="/dashboard" className="nav-link active">
             Dashboard
@@ -113,6 +113,9 @@ const Dashboard = () => {
           )}
         </nav>
         <div className="header-actions">
+          <div className="user-avatar">
+            {userProfile?.name?.charAt(0)?.toUpperCase() || "U"}
+          </div>
           <span className="user-name">Welcome, {userProfile?.name}</span>
           <span className={`user-role role-${userProfile?.role}`}>
             {userProfile?.role?.toUpperCase()}
@@ -127,7 +130,7 @@ const Dashboard = () => {
         {/* Notifications Banner */}
         {notifications.length > 0 && (
           <div className="notifications-banner">
-            <h3>📢 Notifications</h3>
+            <h3>Notifications</h3>
             <div className="notification-list">
               {notifications.map((notification) => (
                 <div
@@ -144,7 +147,7 @@ const Dashboard = () => {
                     onClick={() => markNotificationRead(notification._id)}
                     className="btn-dismiss"
                   >
-                    ✕
+                    X
                   </button>
                 </div>
               ))}
@@ -177,7 +180,7 @@ const Dashboard = () => {
                 onClick={() => navigate("/my-submissions")}
                 className="btn-secondary"
               >
-                📄 View My Submissions
+                View My Submissions
               </button>
             )}
           </div>
@@ -185,7 +188,7 @@ const Dashboard = () => {
 
         {exams.length === 0 ? (
           <div className="no-exams">
-            <div className="no-exams-icon">📝</div>
+            <div className="no-exams-icon"></div>
             <p>
               {userProfile?.role === "teacher"
                 ? "No exams created yet. Create your first exam!"
@@ -218,70 +221,128 @@ const Dashboard = () => {
                   </div>
                   <p className="exam-description">{exam.description}</p>
                   <div className="exam-details">
-                    <div className="detail-item">
-                      <span className="detail-icon">📅</span>
-                      <span>{new Date(exam.scheduledAt).toLocaleString()}</span>
+                    <div className="detail-col">
+                      <svg
+                        className="detail-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                        <path d="M16 2v4M8 2v4M3 10h18" />
+                      </svg>
+                      <span className="detail-label">Date:</span>
+                      <span className="detail-value">
+                        {new Date(exam.scheduledAt).toLocaleString()}
+                      </span>
                     </div>
-                    <div className="detail-item">
-                      <span className="detail-icon">⏱️</span>
-                      <span>{exam.duration} minutes</span>
+                    <div className="detail-col">
+                      <svg
+                        className="detail-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 6v6l4 2" />
+                      </svg>
+                      <span className="detail-label">Duration:</span>
+                      <span className="detail-value">{exam.duration} min</span>
                     </div>
-                    <div className="detail-item">
-                      <span className="detail-icon">❓</span>
-                      <span>{exam.questions?.length || 0} questions</span>
+                    <div className="detail-col">
+                      <svg
+                        className="detail-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <rect x="5" y="2" width="14" height="20" rx="2" />
+                        <path d="M9 7h6M9 11h6M9 15h4" />
+                      </svg>
+                      <span className="detail-label">Questions:</span>
+                      <span className="detail-value">
+                        {exam.questions?.length || 0}
+                      </span>
                     </div>
                     {exam.settings?.passingScore && (
-                      <div className="detail-item">
-                        <span className="detail-icon">🎯</span>
-                        <span>Passing: {exam.settings.passingScore}%</span>
-                      </div>
-                    )}
-                    {exam.settings?.requireWebcam && (
-                      <div className="detail-item">
-                        <span className="detail-icon">📹</span>
-                        <span>Proctored</span>
+                      <div className="detail-col">
+                        <svg
+                          className="detail-icon"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        >
+                          <circle cx="7" cy="7" r="3" />
+                          <circle cx="17" cy="17" r="3" />
+                          <path d="M18 4L6 20" />
+                        </svg>
+                        <span className="detail-label">Passing:</span>
+                        <span className="detail-value">
+                          {exam.settings.passingScore}%
+                        </span>
                       </div>
                     )}
                   </div>
-                  <div className="exam-actions">
-                    {userProfile?.role === "teacher" ||
-                    userProfile?.role === "admin" ? (
-                      <>
-                        <button
-                          onClick={() => navigate(`/edit-exam/${exam._id}`)}
-                          className="btn-secondary"
+                  <div className="exam-card-footer">
+                    {exam.settings?.requireWebcam && (
+                      <div className="exam-mode">
+                        <svg
+                          className="mode-icon"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
                         >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          onClick={() =>
-                            navigate(`/exam-submissions/${exam._id}`)
-                          }
-                          className="btn-secondary"
-                        >
-                          📊 Submissions
-                        </button>
-                      </>
-                    ) : userProfile?.role === "proctor" ? (
-                      <button
-                        onClick={() => navigate("/proctor")}
-                        className="btn-primary"
-                      >
-                        👁️ Monitor
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => navigate(`/take-exam/${exam._id}`)}
-                        className="btn-primary"
-                        disabled={examStatus.status === "ended"}
-                      >
-                        {examStatus.status === "active"
-                          ? "▶️ Take Exam Now"
-                          : examStatus.status === "upcoming"
-                            ? "🕐 View Details"
-                            : "🔒 Exam Ended"}
-                      </button>
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        Mode: Proctored
+                      </div>
                     )}
+                    <div className="exam-actions">
+                      {userProfile?.role === "teacher" ||
+                      userProfile?.role === "admin" ? (
+                        <>
+                          <button
+                            onClick={() => navigate(`/edit-exam/${exam._id}`)}
+                            className="btn-secondary"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() =>
+                              navigate(`/exam-submissions/${exam._id}`)
+                            }
+                            className="btn-secondary"
+                          >
+                            Submissions
+                          </button>
+                        </>
+                      ) : userProfile?.role === "proctor" ? (
+                        <button
+                          onClick={() => navigate("/proctor")}
+                          className="btn-primary"
+                        >
+                          Monitor
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => navigate(`/take-exam/${exam._id}`)}
+                          className="btn-primary"
+                          disabled={examStatus.status === "ended"}
+                        >
+                          {examStatus.status === "active"
+                            ? "Take Exam Now"
+                            : examStatus.status === "upcoming"
+                              ? "View Details"
+                              : "Exam Ended"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

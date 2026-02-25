@@ -125,7 +125,7 @@ const ProctorDashboard = () => {
       {stats && (
         <div className="proctor-stats">
           <div className="stat-card">
-            <span className="stat-icon">👁️</span>
+            <span className="stat-icon">Active</span>
             <div>
               <h4>Active Sessions</h4>
               <p className="stat-value">
@@ -134,7 +134,7 @@ const ProctorDashboard = () => {
             </div>
           </div>
           <div className="stat-card flagged">
-            <span className="stat-icon">⚠️</span>
+            <span className="stat-icon">Alert</span>
             <div>
               <h4>Flagged</h4>
               <p className="stat-value">
@@ -143,14 +143,14 @@ const ProctorDashboard = () => {
             </div>
           </div>
           <div className="stat-card">
-            <span className="stat-icon">📋</span>
+            <span className="stat-icon">Pending</span>
             <div>
               <h4>Pending Reviews</h4>
               <p className="stat-value">{stats.pendingReviews || 0}</p>
             </div>
           </div>
           <div className="stat-card">
-            <span className="stat-icon">📊</span>
+            <span className="stat-icon">Today</span>
             <div>
               <h4>Events Today</h4>
               <p className="stat-value">{stats.todayEvents || 0}</p>
@@ -180,7 +180,7 @@ const ProctorDashboard = () => {
             <div className="section-header">
               <h2>Live Exam Sessions</h2>
               <button onClick={fetchActiveSessions} className="btn-refresh">
-                🔄 Refresh
+                Refresh
               </button>
             </div>
 
@@ -287,7 +287,7 @@ const ProctorDashboard = () => {
                 onClick={() => setSelectedSession(null)}
                 className="btn-close"
               >
-                ×
+                x
               </button>
             </div>
 
@@ -380,19 +380,19 @@ const ProctorDashboard = () => {
                   onClick={() => handleReviewSession("cleared")}
                   className="btn-clear"
                 >
-                  ✓ Clear
+                  Clear
                 </button>
                 <button
                   onClick={() => handleReviewSession("reviewed")}
                   className="btn-reviewed"
                 >
-                  📝 Mark Reviewed
+                  Mark Reviewed
                 </button>
                 <button
                   onClick={() => handleReviewSession("flagged")}
                   className="btn-flag"
                 >
-                  ⚠️ Flag
+                  Flag
                 </button>
               </div>
             </div>

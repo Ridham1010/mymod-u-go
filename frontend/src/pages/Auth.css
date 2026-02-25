@@ -1,93 +1,111 @@
+/* ── Auth (Login / Signup) ────────────────────────────────── */
+
 .auth-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  background: #f7f8fc;
+  padding: 24px;
 }
 
 .auth-card {
-  background: white;
-  padding: 40px;
-  border-radius: 10px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  padding: 44px 40px 36px;
+  border-radius: 12px;
+  border: 1px solid #eef0f4;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   width: 100%;
   max-width: 400px;
 }
 
 .auth-card h2 {
-  margin-bottom: 30px;
-  color: #333;
+  margin-bottom: 28px;
+  color: #1f2937;
   text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
 }
 
+/* ── Form fields ─────────────────────────────────────────── */
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
-  color: #555;
-  font-weight: 500;
+  margin-bottom: 6px;
+  color: #4b5563;
+  font-weight: 600;
+  font-size: 13px;
 }
 
 .form-group input,
 .form-group select {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 16px;
+  padding: 11px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1f2937;
+  background: #fff;
   box-sizing: border-box;
+  transition: border-color 0.15s;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #2d3748;
+  box-shadow: 0 0 0 3px rgba(45, 55, 72, 0.08);
 }
 
+/* ── Primary button ──────────────────────────────────────── */
 .btn-primary {
   width: 100%;
   padding: 12px;
-  background: #667eea;
-  color: white;
+  background: #2d3748;
+  color: #fff;
   border: none;
-  border-radius: 5px;
-  font-size: 16px;
+  border-radius: 8px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: background 0.15s;
 }
 
 .btn-primary:hover {
-  background: #5568d3;
+  background: #1a202c;
 }
 
 .btn-primary:disabled {
-  background: #ccc;
+  background: #cbd5e0;
   cursor: not-allowed;
 }
 
+/* ── Error ───────────────────────────────────────────────── */
 .error-message {
-  background: #fee;
-  color: #c33;
-  padding: 10px;
-  border-radius: 5px;
-  margin-bottom: 20px;
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 18px;
   text-align: center;
+  font-size: 13px;
+  border: 1px solid #fecaca;
 }
 
+/* ── Footer link ─────────────────────────────────────────── */
 .auth-link {
   text-align: center;
-  margin-top: 20px;
-  color: #666;
+  margin-top: 22px;
+  color: #6b7280;
+  font-size: 13px;
 }
 
 .auth-link a {
-  color: #667eea;
+  color: #2d3748;
   text-decoration: none;
   font-weight: 600;
 }

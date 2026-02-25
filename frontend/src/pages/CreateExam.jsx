@@ -265,7 +265,7 @@ const CreateExam = () => {
               <input
                 type="number"
                 value={duration}
-                onChange={(e) => setDuration(parseInt(e.target.value))}
+                onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
                 min="1"
                 required
               />
@@ -287,7 +287,7 @@ const CreateExam = () => {
                     updateSetting("requireWebcam", e.target.checked)
                   }
                 />
-                <span>📹 Require Webcam (Proctoring)</span>
+                <span>Require Webcam (Proctoring)</span>
               </label>
               <p className="setting-description">
                 Enable webcam monitoring during the exam
@@ -303,7 +303,7 @@ const CreateExam = () => {
                     updateSetting("requireFullscreen", e.target.checked)
                   }
                 />
-                <span>🖥️ Require Fullscreen</span>
+                <span>Require Fullscreen</span>
               </label>
               <p className="setting-description">
                 Exam must be taken in fullscreen mode
@@ -319,7 +319,7 @@ const CreateExam = () => {
                     updateSetting("shuffleQuestions", e.target.checked)
                   }
                 />
-                <span>🔀 Shuffle Questions</span>
+                <span>Shuffle Questions</span>
               </label>
               <p className="setting-description">
                 Randomize the order of questions
@@ -335,7 +335,7 @@ const CreateExam = () => {
                     updateSetting("shuffleOptions", e.target.checked)
                   }
                 />
-                <span>🔄 Shuffle Options</span>
+                <span>Shuffle Options</span>
               </label>
               <p className="setting-description">
                 Randomize the order of MCQ options
@@ -351,7 +351,7 @@ const CreateExam = () => {
                     updateSetting("allowBackNavigation", e.target.checked)
                   }
                 />
-                <span>⬅️ Allow Back Navigation</span>
+                <span>Allow Back Navigation</span>
               </label>
               <p className="setting-description">
                 Allow students to go back to previous questions
@@ -367,7 +367,7 @@ const CreateExam = () => {
                     updateSetting("showResults", e.target.checked)
                   }
                 />
-                <span>📊 Show Results</span>
+                <span>Show Results</span>
               </label>
               <p className="setting-description">
                 Show results immediately after submission
@@ -383,7 +383,7 @@ const CreateExam = () => {
                     updateSetting("autoSubmit", e.target.checked)
                   }
                 />
-                <span>⏰ Auto Submit</span>
+                <span>Auto Submit</span>
               </label>
               <p className="setting-description">
                 Automatically submit when time expires
@@ -398,7 +398,7 @@ const CreateExam = () => {
                 type="number"
                 value={settings.passingScore}
                 onChange={(e) =>
-                  updateSetting("passingScore", parseInt(e.target.value))
+                  updateSetting("passingScore", parseInt(e.target.value) || 0)
                 }
                 min="0"
                 max="100"
@@ -411,7 +411,7 @@ const CreateExam = () => {
                 type="number"
                 value={settings.maxAttempts}
                 onChange={(e) =>
-                  updateSetting("maxAttempts", parseInt(e.target.value))
+                  updateSetting("maxAttempts", parseInt(e.target.value) || 1)
                 }
                 min="1"
               />
@@ -462,7 +462,11 @@ const CreateExam = () => {
                     type="number"
                     value={question.points}
                     onChange={(e) =>
-                      updateQuestion(qIndex, "points", parseInt(e.target.value))
+                      updateQuestion(
+                        qIndex,
+                        "points",
+                        parseInt(e.target.value) || 1,
+                      )
                     }
                     min="1"
                   />
@@ -501,7 +505,7 @@ const CreateExam = () => {
                         className="btn-remove-small"
                         disabled={question.options.length <= 2}
                       >
-                        ×
+                        x
                       </button>
                     </div>
                   ))}

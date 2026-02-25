@@ -390,25 +390,25 @@ const AdminDashboard = () => {
                 onClick={() => generateReport("exam_analytics")}
                 className="btn-report"
               >
-                📊 Exam Analytics
+                Exam Analytics
               </button>
               <button
                 onClick={() => generateReport("student_performance")}
                 className="btn-report"
               >
-                📈 Student Performance
+                Student Performance
               </button>
               <button
                 onClick={() => generateReport("proctoring_summary")}
                 className="btn-report"
               >
-                👁️ Proctoring Summary
+                Proctoring Summary
               </button>
               <button
                 onClick={() => generateReport("system_usage")}
                 className="btn-report"
               >
-                💻 System Usage
+                System Usage
               </button>
             </div>
 

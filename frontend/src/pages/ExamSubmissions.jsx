@@ -100,7 +100,7 @@ const ExamSubmissions = () => {
           </p>
         </div>
         <button onClick={() => navigate("/dashboard")} className="btn-back">
-          ← Back to Dashboard
+          Back to Dashboard
         </button>
       </div>
 
@@ -198,7 +198,7 @@ const ExamSubmissions = () => {
                       <span
                         className={`status-badge ${submission.status} ${submission.isFlagged ? "flagged" : ""}`}
                       >
-                        {submission.isFlagged ? "⚠️ " : ""}
+                        {submission.isFlagged ? "[!] " : ""}
                         {submission.status}
                       </span>
                     </td>
@@ -266,68 +266,68 @@ const ExamSubmissions = () => {
                 onClick={() => setSelectedSubmission(null)}
                 className="btn-close"
               >
-                ×
+                x
               </button>
             </div>
 
-            <div className="submission-info">
-              <div className="info-grid">
-                <div className="info-item">
+            <div className="modal-body">
+              <div className="submission-meta">
+                <div className="meta-item">
                   <label>Student</label>
-                  <span>{selectedSubmission.studentId?.name}</span>
+                  <span>{selectedSubmission.studentId?.name || "Unknown"}</span>
                 </div>
-                <div className="info-item">
+                <div className="meta-item">
                   <label>Email</label>
-                  <span>{selectedSubmission.studentId?.email}</span>
+                  <span>{selectedSubmission.studentId?.email || "N/A"}</span>
                 </div>
-                <div className="info-item">
+                <div className="meta-item">
                   <label>Score</label>
                   <span
-                    className={
-                      selectedSubmission.percentage >= 50 ? "pass" : "fail"
-                    }
+                    className={`score-display ${selectedSubmission.percentage >= 50 ? "pass" : "fail"}`}
                   >
                     {selectedSubmission.score}/{selectedSubmission.maxScore} (
                     {selectedSubmission.percentage}%)
                   </span>
                 </div>
-                <div className="info-item">
+                <div className="meta-item">
                   <label>Status</label>
                   <span className={`status-badge ${selectedSubmission.status}`}>
                     {selectedSubmission.status}
                   </span>
                 </div>
-                <div className="info-item">
+                <div className="meta-item">
                   <label>Tab Switches</label>
                   <span
                     className={
-                      selectedSubmission.tabSwitchCount > 3 ? "warning" : ""
+                      selectedSubmission.tabSwitchCount > 3
+                        ? "warning-text"
+                        : ""
                     }
                   >
                     {selectedSubmission.tabSwitchCount}
                   </span>
                 </div>
-                <div className="info-item">
+                <div className="meta-item">
                   <label>Fullscreen Exits</label>
                   <span
                     className={
                       selectedSubmission.fullscreenExitCount > 2
-                        ? "warning"
+                        ? "warning-text"
                         : ""
                     }
                   >
                     {selectedSubmission.fullscreenExitCount}
                   </span>
                 </div>
-                <div className="info-item">
+                <div className="meta-item">
                   <label>Trust Score</label>
                   <span
-                    className={`trust-score ${selectedSubmission.proctoringScore < 50 ? "low" : "normal"}`}
+                    className={`trust-badge ${(selectedSubmission.proctoringScore || 100) < 50 ? "low" : (selectedSubmission.proctoringScore || 100) < 75 ? "medium" : "high"}`}
                   >
                     {selectedSubmission.proctoringScore || 100}%
                   </span>
                 </div>
-                <div className="info-item">
+                <div className="meta-item">
                   <label>Submitted At</label>
                   <span>
                     {selectedSubmission.submittedAt
@@ -338,105 +338,111 @@ const ExamSubmissions = () => {
                   </span>
                 </div>
               </div>
-            </div>
 
-            <div className="answers-section">
-              <h3>Answers</h3>
-              <div className="answers-list">
-                {exam?.questions?.map((question, index) => {
-                  const answer = selectedSubmission.answers?.find(
-                    (a) => a.questionId === question._id,
-                  );
-                  const isCorrect =
-                    answer?.answer?.toLowerCase().trim() ===
-                    question.correctAnswer?.toLowerCase().trim();
+              <div className="answers-section">
+                <h3>Answers</h3>
+                <div className="answers-list">
+                  {exam?.questions?.map((question, index) => {
+                    const answer = selectedSubmission.answers?.find(
+                      (a) => a.questionId === question._id,
+                    );
+                    const isCorrect =
+                      answer?.answer?.toLowerCase().trim() ===
+                      question.correctAnswer?.toLowerCase().trim();
 
-                  return (
-                    <div
-                      key={question._id}
-                      className={`answer-item ${isCorrect ? "correct" : "incorrect"}`}
-                    >
-                      <div className="question-header">
-                        <span className="question-number">Q{index + 1}</span>
-                        <span
-                          className={`result-badge ${isCorrect ? "correct" : "incorrect"}`}
-                        >
-                          {isCorrect ? "✓ Correct" : "✗ Incorrect"} (
-                          {question.points} pt{question.points !== 1 ? "s" : ""}
-                          )
-                        </span>
-                      </div>
-                      <p className="question-text">{question.question}</p>
-                      <div className="answer-comparison">
-                        <div className="student-answer">
-                          <label>Student's Answer:</label>
-                          <span>{answer?.answer || "(No answer)"}</span>
+                    return (
+                      <div
+                        key={question._id}
+                        className={`answer-card ${isCorrect ? "correct" : "incorrect"}`}
+                      >
+                        <div className="question-header">
+                          <span className="question-number">Q{index + 1}</span>
+                          <span
+                            className={`result-badge ${isCorrect ? "correct" : "incorrect"}`}
+                          >
+                            {isCorrect ? "Correct" : "Incorrect"} (
+                            {question.points} pt
+                            {question.points !== 1 ? "s" : ""})
+                          </span>
                         </div>
-                        <div className="correct-answer">
-                          <label>Correct Answer:</label>
-                          <span>{question.correctAnswer}</span>
+                        <p className="question-text">{question.question}</p>
+                        <div className="answer-comparison">
+                          <div className="answer-box student-answer">
+                            <label>Student's Answer</label>
+                            <span
+                              className={`answer-value ${isCorrect ? "correct" : "incorrect"}`}
+                            >
+                              {answer?.answer || "(No answer)"}
+                            </span>
+                          </div>
+                          <div className="answer-box correct-answer-box">
+                            <label>Correct Answer</label>
+                            <span className="answer-value">
+                              {question.correctAnswer}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {selectedSubmission.proctoringEvents?.length > 0 && (
-              <div className="events-section">
-                <h3>
-                  Proctoring Events (
-                  {selectedSubmission.proctoringEvents.length})
-                </h3>
-                <div className="events-list">
-                  {selectedSubmission.proctoringEvents.map((event, index) => (
-                    <div
-                      key={index}
-                      className={`event-item severity-${event.severity}`}
-                    >
-                      <span className="event-time">
-                        {new Date(event.timestamp).toLocaleTimeString()}
-                      </span>
-                      <span className="event-type">
-                        {event.type?.replace(/_/g, " ")}
-                      </span>
-                      <span className={`event-severity ${event.severity}`}>
-                        {event.severity}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
-            )}
 
-            <div className="review-section">
-              <h3>Review Notes</h3>
-              <textarea
-                value={reviewNotes}
-                onChange={(e) => setReviewNotes(e.target.value)}
-                placeholder="Add review notes..."
-                rows={3}
-              />
-              {selectedSubmission.reviewedBy && (
-                <p className="reviewed-info">
-                  Reviewed by {selectedSubmission.reviewedBy.name} on{" "}
-                  {new Date(selectedSubmission.reviewedAt).toLocaleString()}
-                </p>
+              {selectedSubmission.proctoringEvents?.length > 0 && (
+                <div className="events-section">
+                  <h3>
+                    Proctoring Events (
+                    {selectedSubmission.proctoringEvents.length})
+                  </h3>
+                  <div className="events-list">
+                    {selectedSubmission.proctoringEvents.map((event, index) => (
+                      <div
+                        key={index}
+                        className={`event-item severity-${event.severity}`}
+                      >
+                        <span className="event-time">
+                          {new Date(event.timestamp).toLocaleTimeString()}
+                        </span>
+                        <span className="event-type">
+                          {event.type?.replace(/_/g, " ")}
+                        </span>
+                        <span className={`event-severity ${event.severity}`}>
+                          {event.severity}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
-              <div className="review-actions">
-                <button
-                  onClick={() => handleReviewSubmission(false)}
-                  className="btn-approve"
-                >
-                  ✓ Approve
-                </button>
-                <button
-                  onClick={() => handleReviewSubmission(true)}
-                  className="btn-flag"
-                >
-                  ⚠️ Flag
-                </button>
+
+              <div className="review-section">
+                <h3>Review Notes</h3>
+                <textarea
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
+                  placeholder="Add review notes..."
+                  rows={3}
+                />
+                {selectedSubmission.reviewedBy && (
+                  <p className="reviewed-info">
+                    Reviewed by {selectedSubmission.reviewedBy.name} on{" "}
+                    {new Date(selectedSubmission.reviewedAt).toLocaleString()}
+                  </p>
+                )}
+                <div className="review-actions">
+                  <button
+                    onClick={() => handleReviewSubmission(false)}
+                    className="btn-approve"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleReviewSubmission(true)}
+                    className="btn-flag"
+                  >
+                    Flag for Review
+                  </button>
+                </div>
               </div>
             </div>
           </div>

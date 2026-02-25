@@ -1,42 +1,46 @@
+/* My Submissions Page */
 .submissions-page {
   min-height: 100vh;
-  background: #f5f5f5;
-  padding: 20px;
+  background: #f7f8fc;
 }
 
 .submissions-header {
   background: white;
   padding: 20px 40px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #eef0f4;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .submissions-header h1 {
   margin: 0;
-  color: #333;
+  color: #1f2937;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 .btn-back {
-  padding: 10px 20px;
-  background: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 5px;
+  padding: 8px 18px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
+  font-size: 13px;
+  transition: all 0.15s;
 }
 
 .btn-back:hover {
-  background: #5a6268;
+  background: #e5e7eb;
 }
 
 .submissions-content {
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 24px auto;
+  padding: 0 40px;
 }
 
 .no-data {
@@ -44,65 +48,75 @@
   padding: 60px 40px;
   border-radius: 10px;
   text-align: center;
-  color: #666;
-  font-size: 18px;
+  color: #6b7280;
+  font-size: 15px;
+  border: 1px solid #eef0f4;
 }
 
 .submissions-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
 }
 
 .submission-card {
   background: white;
-  padding: 25px;
+  padding: 20px 24px;
   border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid #eef0f4;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s;
 }
 
 .submission-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .submission-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .submission-header h3 {
   margin: 0;
-  color: #333;
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .score-badge {
-  background: #28a745;
-  color: white;
-  padding: 5px 15px;
-  border-radius: 20px;
+  background: #dcfce7;
+  color: #166534;
+  padding: 4px 12px;
+  border-radius: 12px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .submission-description {
-  color: #666;
-  margin-bottom: 15px;
-  min-height: 40px;
+  color: #6b7280;
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 36px;
 }
 
 .submission-details {
-  border-top: 1px solid #eee;
-  padding-top: 15px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 12px;
 }
 
 .submission-details p {
-  margin: 5px 0;
-  color: #555;
-  font-size: 14px;
+  margin: 4px 0;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.submission-details strong {
+  color: #374151;
 }
 
 .loading {
@@ -110,6 +124,22 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  font-size: 24px;
-  color: #667eea;
+  font-size: 16px;
+  color: #6b7280;
+}
+
+@media (max-width: 768px) {
+  .submissions-header {
+    padding: 16px 20px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .submissions-content {
+    padding: 0 16px;
+  }
+
+  .submissions-list {
+    grid-template-columns: 1fr;
+  }
 }
