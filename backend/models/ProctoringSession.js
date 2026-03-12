@@ -55,6 +55,8 @@ const proctoringSessionSchema = new mongoose.Schema({
           "dev_tools_opened",
           "webcam_disabled",
           "focus_lost",
+          "focus_returned",
+          "tab_returned",
           "keyboard_shortcut",
           "screenshot_attempt",
         ],
