@@ -19,10 +19,12 @@ const TakeExam = () => {
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [focusWarning, setFocusWarning] = useState(null);
   const [lastAutoSave, setLastAutoSave] = useState(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState("");
   const [webcamEnabled, setWebcamEnabled] = useState(false);
   const [trustScore, setTrustScore] = useState(100);
+  const [trustScoreFlash, setTrustScoreFlash] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [currentQuestion, setCurrentQuestion] = useState(0);
 
@@ -30,8 +32,11 @@ const TakeExam = () => {
   const canvasRef = useRef(null);
   const autoSaveIntervalRef = useRef(null);
   const webcamIntervalRef = useRef(null);
+  const focusWarningTimerRef = useRef(null);
   const examRef = useRef(null);
   const submittingRef = useRef(false);
+  const proctoringSessionRef = useRef(null);
+  const focusLostAtRef = useRef(null);
 
   // Load exam data on mount (for instructions screen)
   useEffect(() => {
@@ -51,6 +56,10 @@ const TakeExam = () => {
   useEffect(() => {
     examRef.current = exam;
   }, [exam]);
+
+  useEffect(() => {
+    proctoringSessionRef.current = proctoringSession;
+  }, [proctoringSession]);
 
   useEffect(() => {
     submittingRef.current = submitting;
@@ -224,23 +233,33 @@ const TakeExam = () => {
   };
 
   const logProctoringEvent = async (eventType, severity, details) => {
-    if (!proctoringSession) return;
+    if (!proctoringSessionRef.current) return null;
+
+    // Optimistic update: deduct immediately so the score updates without
+    // waiting for the network round-trip.
+    const penalty = { low: 2, medium: 5, high: 10 }[severity] || 5;
+    setTrustScore((prev) => Math.max(0, prev - penalty));
+    setTrustScoreFlash(true);
+    setTimeout(() => setTrustScoreFlash(false), 800);
 
     try {
       const token = await getAuthToken();
       const response = await examService.logProctoringEvent(
         token,
-        proctoringSession._id,
+        proctoringSessionRef.current._id,
         eventType,
         severity,
         details,
       );
+      // Reconcile with the authoritative server value
       if (response.session?.trustScore !== undefined) {
         setTrustScore(response.session.trustScore);
+        return response.session.trustScore;
       }
     } catch (error) {
       console.error("Error logging proctoring event:", error);
     }
+    return null;
   };
 
   const performAutoSave = async () => {
@@ -314,7 +333,9 @@ const TakeExam = () => {
 
     setIsFullscreen(isCurrentlyFullscreen);
 
-    if (!isCurrentlyFullscreen && examRef.current && !submittingRef.current) {
+    // If the page is hidden, the user alt-tabbed away — the tab_switch handler
+    // already covers this. Don't double-count it as a fullscreen exit.
+    if (!isCurrentlyFullscreen && examRef.current && !submittingRef.current && !document.hidden) {
       setFullscreenExitCount((prev) => {
         const newCount = prev + 1;
         logProctoringEvent(
@@ -331,23 +352,73 @@ const TakeExam = () => {
     }
   }, []);
 
-  const handleVisibilityChange = useCallback(() => {
-    if (document.hidden && examRef.current && !submittingRef.current) {
-      setTabSwitchCount((prev) => {
-        const newCount = prev + 1;
-        logProctoringEvent(
-          "tab_switch",
-          "high",
-          `Tab switched (count: ${newCount})`,
-        );
-        return newCount;
-      });
-    }
+  // EventMonitor: showFocusWarning
+  // Displays a timed on-screen warning banner and auto-dismisses after 5 s.
+  const showFocusWarning = useCallback((message) => {
+    setFocusWarning(message);
+    if (focusWarningTimerRef.current) clearTimeout(focusWarningTimerRef.current);
+    focusWarningTimerRef.current = setTimeout(() => setFocusWarning(null), 5000);
   }, []);
 
-  const handleBlur = useCallback(() => {
-    if (examRef.current && !submittingRef.current) {
-      logProctoringEvent("focus_lost", "medium", "Window lost focus");
+  // EventMonitor: handleVisibilityChange
+  // Detects tab switches via the Page Visibility API (document.hidden).
+  // On hide: logs tab_switch, records timestamp. On return: logs duration away.
+  const handleVisibilityChange = useCallback(async () => {
+    if (!examRef.current || submittingRef.current) return;
+
+    if (document.hidden) {
+      focusLostAtRef.current = Date.now();
+      setTabSwitchCount((prev) => prev + 1);
+      const newScore = await logProctoringEvent(
+        "tab_switch",
+        "high",
+        `Tab switched (count: ${tabSwitchCount + 1})`,
+      );
+      const scoreInfo = newScore !== null ? ` Trust score: ${newScore}%` : "";
+      showFocusWarning(
+        `Warning: Tab switch detected (-10 trust score points).${scoreInfo} This event has been queued for teacher review.`,
+      );
+    } else {
+      // User returned to the exam tab
+      if (focusLostAtRef.current) {
+        const durationSec = Math.round((Date.now() - focusLostAtRef.current) / 1000);
+        focusLostAtRef.current = null;
+        logProctoringEvent(
+          "tab_returned",
+          "low",
+          `Returned to exam after ${durationSec}s away`,
+        );
+      }
+    }
+  }, [showFocusWarning, tabSwitchCount]);
+
+  // EventMonitor: handleBlur / handleFocus (window focus listeners)
+  // handleBlur: window lost OS focus (but tab is still active).
+  // handleFocus: window regained OS focus — logs how long the student was away.
+  const handleBlur = useCallback(async () => {
+    if (examRef.current && !submittingRef.current && !document.hidden) {
+      focusLostAtRef.current = Date.now();
+      const newScore = await logProctoringEvent(
+        "focus_lost",
+        "medium",
+        "Window lost focus",
+      );
+      const scoreInfo = newScore !== null ? ` Trust score: ${newScore}%` : "";
+      showFocusWarning(
+        `Warning: Focus loss detected (-5 trust score points).${scoreInfo} This event has been queued for teacher review.`,
+      );
+    }
+  }, [showFocusWarning]);
+
+  const handleFocus = useCallback(() => {
+    if (examRef.current && !submittingRef.current && focusLostAtRef.current) {
+      const durationSec = Math.round((Date.now() - focusLostAtRef.current) / 1000);
+      focusLostAtRef.current = null;
+      logProctoringEvent(
+        "focus_returned",
+        "low",
+        `Returned to exam window after ${durationSec}s away`,
+      );
     }
   }, []);
 
@@ -399,6 +470,7 @@ const TakeExam = () => {
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("keydown", handleKeyDown);
     window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
   };
 
   const removeMonitoring = () => {
@@ -414,6 +486,7 @@ const TakeExam = () => {
     document.removeEventListener("contextmenu", handleContextMenu);
     document.removeEventListener("keydown", handleKeyDown);
     window.removeEventListener("blur", handleBlur);
+    window.removeEventListener("focus", handleFocus);
   };
 
   const cleanup = () => {
@@ -425,6 +498,9 @@ const TakeExam = () => {
     }
     if (webcamIntervalRef.current) {
       clearInterval(webcamIntervalRef.current);
+    }
+    if (focusWarningTimerRef.current) {
+      clearTimeout(focusWarningTimerRef.current);
     }
 
     if (videoRef.current && videoRef.current.srcObject) {
@@ -621,12 +697,26 @@ const TakeExam = () => {
           </div>
           <div className="trust-score">
             Trust:{" "}
-            <span className={trustScore < 50 ? "score-warning" : ""}>
+            <span className={`${trustScore < 50 ? "score-warning" : ""} ${trustScoreFlash ? "score-flash" : ""}`}>
               {trustScore}%
             </span>
           </div>
         </div>
       </div>
+
+      {focusWarning && (
+        <div className="focus-warning-banner" role="alert">
+          <span className="focus-warning-icon">&#9888;</span>
+          <span className="focus-warning-text">{focusWarning}</span>
+          <button
+            className="focus-warning-close"
+            onClick={() => setFocusWarning(null)}
+            aria-label="Dismiss warning"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       <div className="exam-warnings">
         <span>
