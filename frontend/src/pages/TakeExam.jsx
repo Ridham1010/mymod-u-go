@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { examService } from "../services/examService";
+import CalibrationScreen from "../components/CalibrationScreen";
 import "./TakeExam.css";
 
 const TakeExam = () => {
@@ -27,6 +28,8 @@ const TakeExam = () => {
   const [trustScoreFlash, setTrustScoreFlash] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [calibrationRequired, setCalibrationRequired] = useState(false);
+  const [calibrationComplete, setCalibrationComplete] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -37,6 +40,7 @@ const TakeExam = () => {
   const submittingRef = useRef(false);
   const proctoringSessionRef = useRef(null);
   const focusLostAtRef = useRef(null);
+  const monitoringEnabledRef = useRef(false);
 
   // Load exam data on mount (for instructions screen)
   useEffect(() => {
@@ -179,11 +183,17 @@ const TakeExam = () => {
       );
       setProctoringSession(response.session);
 
-      await startWebcam();
-
-      webcamIntervalRef.current = setInterval(() => {
-        captureAndUploadScreenshot();
-      }, 60000);
+      // Show calibration screen if camera is required
+      if (exam.settings?.requireWebcam !== false) {
+        setCalibrationRequired(true);
+      } else {
+        // Skip calibration if camera not required
+        setCalibrationComplete(true);
+        await startWebcam();
+        webcamIntervalRef.current = setInterval(() => {
+          captureAndUploadScreenshot();
+        }, 60000);
+      }
     } catch (error) {
       console.error("Error starting proctoring:", error);
     }
@@ -262,6 +272,36 @@ const TakeExam = () => {
     return null;
   };
 
+  const handleCalibrationComplete = async (calibrationData) => {
+    console.log("Calibration completed:", calibrationData);
+    setCalibrationRequired(false);
+    setCalibrationComplete(true);
+
+    // Start webcam after calibration
+    await startWebcam();
+
+    // Enable proctoring monitoring NOW
+    monitoringEnabledRef.current = true;
+
+    // Start periodic screenshot uploads
+    webcamIntervalRef.current = setInterval(() => {
+      captureAndUploadScreenshot();
+    }, 60000);
+  };
+
+  const handleCalibrationFailed = (error) => {
+    console.error("Calibration failed:", error);
+    alert(`Calibration failed: ${error}. Please try again or contact support.`);
+    // Could optionally retry or allow exam without full calibration
+    setCalibrationRequired(false);
+    // Proceed with exam but flag it
+    logProctoringEvent(
+      "calibration_failed",
+      "high",
+      `Camera calibration failed: ${error}`
+    );
+  };
+
   const performAutoSave = async () => {
     if (!submission || submittingRef.current) return;
 
@@ -333,9 +373,9 @@ const TakeExam = () => {
 
     setIsFullscreen(isCurrentlyFullscreen);
 
-    // If the page is hidden, the user alt-tabbed away — the tab_switch handler
-    // already covers this. Don't double-count it as a fullscreen exit.
-    if (!isCurrentlyFullscreen && examRef.current && !submittingRef.current && !document.hidden) {
+    // Only log fullscreen exit if monitoring is enabled (not during calibration)
+    // and if the page is not hidden, and exam is active, and not already submitting
+    if (!isCurrentlyFullscreen && examRef.current && !submittingRef.current && !document.hidden && monitoringEnabledRef.current) {
       setFullscreenExitCount((prev) => {
         const newCount = prev + 1;
         logProctoringEvent(
@@ -364,7 +404,7 @@ const TakeExam = () => {
   // Detects tab switches via the Page Visibility API (document.hidden).
   // On hide: logs tab_switch, records timestamp. On return: logs duration away.
   const handleVisibilityChange = useCallback(async () => {
-    if (!examRef.current || submittingRef.current) return;
+    if (!examRef.current || submittingRef.current || !monitoringEnabledRef.current) return;
 
     if (document.hidden) {
       focusLostAtRef.current = Date.now();
@@ -396,7 +436,7 @@ const TakeExam = () => {
   // handleBlur: window lost OS focus (but tab is still active).
   // handleFocus: window regained OS focus — logs how long the student was away.
   const handleBlur = useCallback(async () => {
-    if (examRef.current && !submittingRef.current && !document.hidden) {
+    if (examRef.current && !submittingRef.current && !document.hidden && monitoringEnabledRef.current) {
       focusLostAtRef.current = Date.now();
       const newScore = await logProctoringEvent(
         "focus_lost",
@@ -680,6 +720,21 @@ const TakeExam = () => {
 
   if (!exam) {
     return <div className="error">Exam not found</div>;
+  }
+
+  if (calibrationRequired && proctoringSession) {
+    return (
+      <CalibrationScreen
+        onCalibrationComplete={handleCalibrationComplete}
+        onCalibrationFailed={handleCalibrationFailed}
+        token={getAuthToken}
+        sessionId={proctoringSession._id}
+      />
+    );
+  }
+
+  if (!calibrationComplete && exam.settings?.requireWebcam !== false && !showInstructions) {
+    return <div className="loading">Initializing proctoring session...</div>;
   }
 
   const currentQ = exam.questions[currentQuestion];

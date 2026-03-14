@@ -205,7 +205,6 @@ export const examService = {
     token,
     sessionId,
     facesDetected,
-    confidence,
     screenshot,
   ) => {
     const response = await api.post(
@@ -213,7 +212,6 @@ export const examService = {
       {
         sessionId,
         facesDetected,
-        confidence,
         screenshot,
       },
       authHeader(token),
@@ -375,6 +373,16 @@ export const examService = {
     const response = await api.put(
       "/auth/profile",
       profileData,
+      authHeader(token),
+    );
+    return response.data;
+  },
+
+  // Calibration
+  saveCalibration: async (token, sessionId, calibrationData) => {
+    const response = await api.post(
+      `/proctoring/${sessionId}/calibrate`,
+      calibrationData,
       authHeader(token),
     );
     return response.data;
