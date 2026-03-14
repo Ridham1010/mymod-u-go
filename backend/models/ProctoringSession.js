@@ -37,6 +37,43 @@ const proctoringSessionSchema = new mongoose.Schema({
     ipAddress: String,
     userAgent: String,
   },
+  // Camera calibration data
+  calibration: {
+    status: {
+      type: String,
+      enum: ["pending", "calibrated", "failed"],
+      default: "pending",
+    },
+    timestamp: Date,
+    duration: Number, // Duration in seconds (should be 30)
+    framesAnalyzed: Number,
+    facesDetected: Number,
+    detectionRate: Number, // Percentage
+    thresholds: {
+      minFaceDistance: Number,
+      maxFaceDistance: Number,
+      minLighting: Number,
+      maxLighting: Number,
+    },
+    environment: {
+      lighting: {
+        average: Number,
+        min: Number,
+        max: Number,
+      },
+      distance: {
+        average: Number,
+        min: Number,
+        max: Number,
+      },
+    },
+    normalizedBoundingBoxes: {
+      avgX: Number,
+      avgY: Number,
+      avgWidth: Number,
+      avgHeight: Number,
+    },
+  },
   // Monitoring data
   events: [
     {
@@ -59,6 +96,8 @@ const proctoringSessionSchema = new mongoose.Schema({
           "tab_returned",
           "keyboard_shortcut",
           "screenshot_attempt",
+          "calibration_completed",
+          "calibration_failed",
         ],
       },
       timestamp: {
@@ -83,7 +122,6 @@ const proctoringSessionSchema = new mongoose.Schema({
     {
       timestamp: Date,
       facesDetected: Number,
-      confidence: Number,
       screenshot: String,
     },
   ],

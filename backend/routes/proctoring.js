@@ -318,7 +318,7 @@ router.post("/face-detection", verifyFirebaseToken, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const { sessionId, facesDetected, confidence, screenshot } = req.body;
+    const { sessionId, facesDetected, screenshot } = req.body;  
 
     const session = await ProctoringSession.findById(sessionId);
     if (!session) {
@@ -328,7 +328,6 @@ router.post("/face-detection", verifyFirebaseToken, async (req, res) => {
     session.faceDetectionResults.push({
       timestamp: new Date(),
       facesDetected,
-      confidence,
       screenshot,
     });
 
@@ -355,6 +354,67 @@ router.post("/face-detection", verifyFirebaseToken, async (req, res) => {
     res.json({ trustScore: session.trustScore });
   } catch (error) {
     console.error("Error logging face detection:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Camera calibration endpoint
+router.post("/:id/calibrate", verifyFirebaseToken, async (req, res) => {
+  try {
+    const user = await User.findOne({ firebaseUid: req.user.uid });
+    if (!user || user.role !== "student") {
+      return res.status(403).json({ message: "Only students can calibrate" });
+    }
+
+    const { id: sessionId } = req.params;
+    const calibrationData = req.body;
+
+    const session = await ProctoringSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+
+    // Verify that the student owns this session
+    if (session.studentId.toString() !== user._id.toString()) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // Store calibration data
+    session.calibration = {
+      status: calibrationData.status || "calibrated",
+      timestamp: new Date(),
+      duration: calibrationData.duration || 30,
+      framesAnalyzed: calibrationData.framesAnalyzed || 0,
+      facesDetected: calibrationData.facesDetected || 0,
+      detectionRate: calibrationData.detectionRate || 0,
+      thresholds: {
+        minFaceDistance: calibrationData.thresholds?.minFaceDistance || 50,
+        maxFaceDistance: calibrationData.thresholds?.maxFaceDistance || 150,
+        minLighting: calibrationData.thresholds?.minLighting || 50,
+        maxLighting: calibrationData.thresholds?.maxLighting || 200,
+      },
+      environment: {
+        lighting: calibrationData.environment?.lighting || {},
+        distance: calibrationData.environment?.distance || {},
+      },
+    };
+
+    // Log calibration event
+    session.events.push({
+      type: "calibration_completed",
+      severity: "low",
+      details: `Calibration completed - Detection rate: ${calibrationData.detectionRate}%`,
+      timestamp: new Date(),
+    });
+
+    await session.save();
+
+    res.json({
+      message: "Calibration data saved successfully",
+      session,
+    });
+  } catch (error) {
+    console.error("Error calibrating session:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
