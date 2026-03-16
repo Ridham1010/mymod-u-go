@@ -476,29 +476,51 @@ const TakeExam = () => {
     }
   }, []);
 
-  const handleKeyDown = useCallback((e) => {
+  const blockRestrictedInputs = useCallback((e) => {
     if (!examRef.current) return;
 
+    // Block PrintScreen (screenshot_attempt)
+    if (e.key === "PrintScreen") {
+      e.preventDefault();
+      // Try to clear clipboard to ruin the screenshot if it bypassed e.preventDefault()
+      try { navigator.clipboard.writeText(""); } catch (err) {}
+      logProctoringEvent(
+        "screenshot_attempt",
+        "high",
+        "Attempted to take a screenshot",
+      );
+      showFocusWarning("Warning: Taking screenshots is strictly prohibited (-10 trust score).");
+      return;
+    }
+
+    // Block keyboard shortcuts: Ctrl/Cmd + C, V, P, A
     if (
       (e.ctrlKey || e.metaKey) &&
-      ["c", "v", "p"].includes(e.key.toLowerCase())
+      ["c", "v", "p", "a"].includes(e.key.toLowerCase())
     ) {
       e.preventDefault();
+      const shortcut = `Ctrl+${e.key.toUpperCase()}`;
       logProctoringEvent(
         "keyboard_shortcut",
         "medium",
-        `Blocked shortcut: Ctrl+${e.key}`,
+        `Blocked shortcut: ${shortcut}`,
       );
+      showFocusWarning(`Warning: Keyboard shortcut ${shortcut} is disabled (-5 trust score).`);
+      return;
     }
-    if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) {
+
+    // Block Developer Tools: F12 or Ctrl+Shift+I
+    if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i")) {
       e.preventDefault();
       logProctoringEvent(
         "dev_tools_opened",
         "high",
-        "Attempted to open dev tools",
+        "Attempted to open developer tools",
       );
+      showFocusWarning("Warning: Opening developer tools is strictly prohibited (-10 trust score).");
+      return;
     }
-  }, []);
+  }, [showFocusWarning]);
 
   const setupMonitoring = () => {
     document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -508,7 +530,7 @@ const TakeExam = () => {
     document.addEventListener("paste", handleCopyPaste);
     document.addEventListener("cut", handleCopyPaste);
     document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", blockRestrictedInputs);
     window.addEventListener("blur", handleBlur);
     window.addEventListener("focus", handleFocus);
   };
@@ -524,7 +546,7 @@ const TakeExam = () => {
     document.removeEventListener("paste", handleCopyPaste);
     document.removeEventListener("cut", handleCopyPaste);
     document.removeEventListener("contextmenu", handleContextMenu);
-    document.removeEventListener("keydown", handleKeyDown);
+    document.removeEventListener("keydown", blockRestrictedInputs);
     window.removeEventListener("blur", handleBlur);
     window.removeEventListener("focus", handleFocus);
   };
