@@ -56,7 +56,11 @@ const CreateExam = () => {
 
       setTitle(exam.title);
       setDescription(exam.description || "");
-      setScheduledAt(new Date(exam.scheduledAt).toISOString().slice(0, 16));
+      const d = new Date(exam.scheduledAt);
+      const localDate = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+      setScheduledAt(localDate);
       setDuration(exam.duration);
       setQuestions(
         exam.questions.map((q) => ({
@@ -199,7 +203,7 @@ const CreateExam = () => {
       const examData = {
         title,
         description,
-        scheduledAt,
+        scheduledAt: new Date(scheduledAt).toISOString(),
         duration,
         settings,
         questions: questions.map((q) => ({
