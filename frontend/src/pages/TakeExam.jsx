@@ -661,7 +661,7 @@ const TakeExam = () => {
       alert(
         `Exam submitted successfully!\nScore: ${result.score}/${result.maxScore} (${result.percentage}%)`,
       );
-      navigate("/my-submissions");
+      navigate("/dashboard", { replace: true });
     } catch (error) {
       console.error("Error submitting exam:", error);
       alert(
