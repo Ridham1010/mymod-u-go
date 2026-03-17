@@ -202,18 +202,12 @@ const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, 
 
       // Update stats UI periodically
       if (stats.framesAnalyzed % 10 === 0) {
-        const detectionRate =
-          stats.framesAnalyzed > 0
-            ? Math.round(
-                (stats.facesDetected / stats.framesAnalyzed) *
-                  100
-              )
-            : 0;
-
         setFaceDetectionStats({
           framesAnalyzed: stats.framesAnalyzed,
           facesDetected: stats.facesDetected,
-          detectionRate,
+          detectionRate: Math.round(
+            (stats.facesDetected / stats.framesAnalyzed) * 100
+          ),
           faceDistances: stats.faceDistances,
           lightingLevels: stats.lightingLevels,
         });
@@ -246,15 +240,17 @@ const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, 
             stats.lightingLevels.length
           : 0;
 
+      const detectionRate = stats.framesAnalyzed > 0
+        ? Math.round((stats.facesDetected / stats.framesAnalyzed) * 100)
+        : 0;
+
       const calibrationData = {
         status: "calibrated",
         timestamp: new Date(),
         duration: 30,
         framesAnalyzed: stats.framesAnalyzed,
         facesDetected: stats.facesDetected,
-        detectionRate: Math.round(
-          (stats.facesDetected / stats.framesAnalyzed) * 100
-        ),
+        detectionRate,
         thresholds: {
           minFaceDistance: avgDistance * 0.8, 
           maxFaceDistance: avgDistance * 1.2, 

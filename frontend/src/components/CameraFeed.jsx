@@ -11,9 +11,6 @@ const CameraFeed = ({
   onFrame = null 
 }) => {
   const [error, setError] = useState(null);
-  const [stats, setStats] = useState({ fps: 0, detectionTime: 0 });
-  const frameCountRef = useRef(0);
-  const lastTimeRef = useRef(Date.now());
   const animationFrameRef = useRef(null);
 
   useEffect(() => {
@@ -62,34 +59,12 @@ const CameraFeed = ({
     };
   }, [isActive, videoRef, canvasRef, width, height]);
 
-  // FPS counter and frame callback
+  // Frame capture callback
   useEffect(() => {
     if (!isActive || !videoRef.current || !onFrame) return;
 
     const captureFrame = () => {
-      const now = Date.now();
-      frameCountRef.current++;
-
-      // Calculate FPS every second
-      if (now - lastTimeRef.current >= 1000) {
-        setStats({
-          fps: frameCountRef.current,
-          detectionTime: 0,
-        });
-        frameCountRef.current = 0;
-        lastTimeRef.current = now;
-      }
-
-      // Call onFrame callback with video element
-      const startTime = performance.now();
       onFrame(videoRef.current, canvasRef.current);
-      const detectionTime = performance.now() - startTime;
-
-      setStats((prev) => ({
-        ...prev,
-        detectionTime: Math.round(detectionTime),
-      }));
-
       animationFrameRef.current = requestAnimationFrame(captureFrame);
     };
 
@@ -127,12 +102,6 @@ const CameraFeed = ({
         )}
         {error && <div className="camera-error">{error}</div>}
       </div>
-      {isActive && (
-        <div className="camera-stats">
-          <div>FPS: {stats.fps}</div>
-          <div>Detection: {stats.detectionTime}ms</div>
-        </div>
-      )}
     </div>
   );
 };
