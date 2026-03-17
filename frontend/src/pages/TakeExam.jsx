@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import * as faceapi from "face-api.js";
 import { useAuth } from "../contexts/AuthContext";
 import { examService } from "../services/examService";
 import CalibrationScreen from "../components/CalibrationScreen";
@@ -30,6 +31,7 @@ const TakeExam = () => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [calibrationRequired, setCalibrationRequired] = useState(false);
   const [calibrationComplete, setCalibrationComplete] = useState(false);
+  const [faceStatus, setFaceStatus] = useState("idle"); // idle|ok|no_face|multiple_faces|looking_away
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -41,6 +43,10 @@ const TakeExam = () => {
   const proctoringSessionRef = useRef(null);
   const focusLostAtRef = useRef(null);
   const monitoringEnabledRef = useRef(false);
+  const streamRef = useRef(null); // Holds the raw MediaStream so we can stop it reliably
+  const faceDetectionIntervalRef = useRef(null);
+  const faceModelsLoadedRef = useRef(false); // Tracks whether face-api models are loaded
+  const lastFaceEventRef = useRef({}); // Per-event cooldown timestamps
 
   // Load exam data on mount (for instructions screen)
   useEffect(() => {
@@ -146,9 +152,8 @@ const TakeExam = () => {
         await startProctoring(token, exam._id, submissionData.submission._id);
       }
 
-      if (exam.settings?.requireFullscreen !== false) {
-        requestFullscreen();
-      }
+      // Always request fullscreen for proctored exams
+      requestFullscreen();
 
       setupMonitoring();
 
@@ -206,6 +211,10 @@ const TakeExam = () => {
         audio: false,
       });
 
+      // Keep the stream in a ref so cleanup() can always stop it,
+      // even if videoRef.current becomes null during navigation.
+      streamRef.current = stream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setWebcamEnabled(true);
@@ -215,6 +224,87 @@ const TakeExam = () => {
       logProctoringEvent("webcam_disabled", "high", "Failed to access webcam");
     }
   };
+
+  // ─── Live AI Face Detection ─────────────────────────────────────────────────
+
+  const ensureModelsLoaded = async () => {
+    if (faceModelsLoadedRef.current) return;
+    const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.load(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.load(MODEL_URL),
+    ]);
+    faceModelsLoadedRef.current = true;
+  };
+
+  const analyzeFaceDetection = async () => {
+    if (!videoRef.current || submittingRef.current) return;
+    try {
+      const detections = await faceapi
+        .detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+        .withFaceLandmarks();
+
+      const count = detections.length;
+      const now = Date.now();
+
+      // Log an event type at most once per cooldown period
+      const canLog = (type, ms = 15000) => {
+        const last = lastFaceEventRef.current[type] || 0;
+        if (now - last >= ms) { lastFaceEventRef.current[type] = now; return true; }
+        return false;
+      };
+
+      if (count === 0) {
+        setFaceStatus("no_face");
+        if (canLog("face_not_detected"))
+          logProctoringEvent("face_not_detected", "high", "No face detected in frame");
+      } else if (count > 1) {
+        setFaceStatus("multiple_faces");
+        if (canLog("multiple_faces"))
+          logProctoringEvent("multiple_faces", "high", `${count} faces detected simultaneously`);
+      } else {
+        const pts = detections[0].landmarks.positions;
+        const box = detections[0].detection.box;
+
+        // Eye centers (left: 36-41, right: 42-47)
+        const mx = (idx) => idx.reduce((s, i) => s + pts[i].x, 0) / idx.length;
+        const eyeMidX = (mx([36,37,38,39,40,41]) + mx([42,43,44,45,46,47])) / 2;
+        const headTurnRatio = Math.abs(pts[33].x - eyeMidX) / box.width;
+
+        // Eye Aspect Ratio – detects closed/downcast eyes
+        const d = (a, b) => Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y);
+        const leftEAR  = (d(37,41) + d(38,40)) / (2 * d(36,39));
+        const rightEAR = (d(43,47) + d(44,46)) / (2 * d(42,45));
+        const avgEAR = (leftEAR + rightEAR) / 2;
+
+        if (headTurnRatio > 0.18) {
+          setFaceStatus("looking_away");
+          if (canLog("suspicious_movement", 20000))
+            logProctoringEvent("suspicious_movement", "medium", `Head turned away (${Math.round(headTurnRatio*100)}% offset)`);
+        } else if (avgEAR < 0.15) {
+          setFaceStatus("looking_away");
+          if (canLog("suspicious_movement", 20000))
+            logProctoringEvent("suspicious_movement", "medium", `Eyes closed/downcast (EAR: ${avgEAR.toFixed(2)})`);
+        } else {
+          setFaceStatus("ok");
+        }
+      }
+    } catch (err) {
+      console.warn("Face detection frame error:", err.message);
+    }
+  };
+
+  const startLiveFaceDetection = async () => {
+    try {
+      await ensureModelsLoaded();
+      setFaceStatus("ok");
+      faceDetectionIntervalRef.current = setInterval(analyzeFaceDetection, 5000);
+    } catch (err) {
+      console.error("Failed to start live face detection:", err);
+    }
+  };
+
+  // ────────────────────────────────────────────────────────────────────────────
 
   const captureAndUploadScreenshot = async () => {
     if (!videoRef.current || !canvasRef.current || !proctoringSession) return;
@@ -287,6 +377,9 @@ const TakeExam = () => {
     webcamIntervalRef.current = setInterval(() => {
       captureAndUploadScreenshot();
     }, 60000);
+
+    // Start live AI face detection
+    startLiveFaceDetection();
   };
 
   const handleCalibrationFailed = (error) => {
@@ -561,12 +654,23 @@ const TakeExam = () => {
     if (webcamIntervalRef.current) {
       clearInterval(webcamIntervalRef.current);
     }
+    if (faceDetectionIntervalRef.current) {
+      clearInterval(faceDetectionIntervalRef.current);
+      faceDetectionIntervalRef.current = null;
+    }
     if (focusWarningTimerRef.current) {
       clearTimeout(focusWarningTimerRef.current);
     }
 
-    if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+    // Stop via the dedicated stream ref first (reliable even after navigation).
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    // Also clear the video element's srcObject so the browser releases the device.
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
   };
 
@@ -781,6 +885,14 @@ const TakeExam = () => {
               {trustScore}%
             </span>
           </div>
+          {webcamEnabled && faceStatus !== "idle" && (
+            <div style={{ fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "4px", fontWeight: 600 }}>
+              {faceStatus === "ok"             && <span style={{ color: "#22c55e" }}>🟢 Face OK</span>}
+              {faceStatus === "no_face"        && <span style={{ color: "#ef4444" }}>🔴 No Face!</span>}
+              {faceStatus === "multiple_faces" && <span style={{ color: "#ef4444" }}>🔴 Multiple Faces!</span>}
+              {faceStatus === "looking_away"   && <span style={{ color: "#f59e0b" }}>🟡 Look at screen</span>}
+            </div>
+          )}
         </div>
       </div>
 
