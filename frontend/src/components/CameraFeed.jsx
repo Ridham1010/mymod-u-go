@@ -12,6 +12,7 @@ const CameraFeed = ({
 }) => {
   const [error, setError] = useState(null);
   const animationFrameRef = useRef(null);
+  const streamRef = useRef(null); // Store stream separately so cleanup can stop it even after DOM unmounts
 
   useEffect(() => {
     if (!isActive) return;
@@ -27,6 +28,9 @@ const CameraFeed = ({
           },
           audio: false,
         });
+
+        // Keep the raw stream in a ref so cleanup can always stop it.
+        streamRef.current = stream;
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -53,8 +57,13 @@ const CameraFeed = ({
     startCamera();
 
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+      // Stop via streamRef first — reliable even when videoRef.current is null.
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
       }
     };
   }, [isActive, videoRef, canvasRef, width, height]);
