@@ -630,6 +630,11 @@ const TakeExam = () => {
 
     try {
       setSubmitting(true);
+
+      // Stop webcam, clear intervals, remove monitoring, and exit fullscreen
+      // immediately so the camera turns off as soon as the student submits.
+      cleanup();
+
       const token = await getAuthToken();
 
       if (proctoringSession) {
@@ -652,8 +657,6 @@ const TakeExam = () => {
       };
 
       const result = await examService.submitExam(token, submissionData);
-
-      cleanup();
 
       alert(
         `Exam submitted successfully!\nScore: ${result.score}/${result.maxScore} (${result.percentage}%)`,
