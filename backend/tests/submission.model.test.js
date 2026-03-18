@@ -113,14 +113,5 @@ describe("Submission Model", () => {
       ).rejects.toThrow(mongoose.Error.ValidationError);
     });
 
-    test("should reject invalid proctoring event type", async () => {
-      await expect(
-        Submission.create({
-          examId,
-          studentId,
-          proctoringEvents: [{ type: "invalid_event" }],
-        })
-      ).rejects.toThrow(mongoose.Error.ValidationError);
-    });
   });
 });

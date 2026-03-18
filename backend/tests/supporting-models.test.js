@@ -43,7 +43,7 @@ describe("Notification Model", () => {
   });
 
   // ─── OO Checks ─────────────────────────────────────────────────
-  describe("OO Checks: Schema defaults", () => {
+  describe("OO Checks: Schema and validation", () => {
     test("should create notification with required fields", async () => {
       const notif = await Notification.create({
         userId,
@@ -56,6 +56,9 @@ describe("Notification Model", () => {
       expect(notif.type).toBe("exam_scheduled");
       expect(notif.title).toBe("Exam Scheduled");
       expect(notif.message).toBe("Math exam on Monday");
+      // Verify defaults
+      expect(notif.isRead).toBe(false);
+      expect(notif.priority).toBe("medium");
     });
 
     test("should reject invalid notification type", async () => {
@@ -65,6 +68,7 @@ describe("Notification Model", () => {
         })
       ).rejects.toThrow(mongoose.Error.ValidationError);
     });
+
   });
 });
 
@@ -101,6 +105,7 @@ describe("Report Model", () => {
       expect(report.generatedBy.toString()).toBe(userId.toString());
     });
   });
+
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -116,6 +121,7 @@ describe("LoginAttempt Model", () => {
       expect(attempt.success).toBe(false);
     });
   });
+
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -140,4 +146,5 @@ describe("RegistrationAttempt Model", () => {
       expect(count).toBe(3);
     });
   });
+
 });

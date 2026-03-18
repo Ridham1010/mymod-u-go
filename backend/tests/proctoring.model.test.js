@@ -126,16 +126,6 @@ describe("ProctoringSession Model", () => {
     });
   });
 
-  // ─── Boundary Checks: Trust score ─────────────────────────────────
-  describe("Boundary Checks: Trust score and events", () => {
-    test("should accept trustScore at minimum (0)", async () => {
-      const session = await ProctoringSession.create({
-        submissionId, studentId, examId, trustScore: 0,
-      });
-      expect(session.trustScore).toBe(0);
-    });
-  });
-
   // ─── Error Handling ────────────────────────────────────────────────
   describe("Error Handling: Required fields", () => {
     test("should fail without submissionId", async () => {

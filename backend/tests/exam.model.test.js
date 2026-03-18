@@ -131,27 +131,33 @@ describe("Exam Model", () => {
   });
 
   // ─── Boundary Checks ─────────────────────────────────────────────
+  // ─── Boundary Checks ─────────────────────────────────────────────
   describe("Boundary Checks: Edge case values", () => {
-    test("should handle an exam with many questions", async () => {
-      const questions = Array.from({ length: 100 }, (_, i) => ({
-        type: "mcq",
-        question: `Question ${i + 1}?`,
-        correctAnswer: "A",
-        options: ["A", "B", "C", "D"],
-        points: 1,
-      }));
-
+    test("should allow an exam creation with 0 questions initially", async () => {
       const exam = await Exam.create({
-        title: "100 Questions",
+        title: "Empty Validation Exam",
         teacherId,
-        questions,
+        questions: [],
         scheduledAt: new Date(),
         duration: 180,
         endTime: new Date(Date.now() + 180 * 60000),
       });
 
-      expect(exam.questions).toHaveLength(100);
-      expect(exam.totalPoints).toBe(100);
+      expect(exam.questions).toHaveLength(0);
+      expect(exam.totalPoints).toBe(0);
+    });
+
+    test("should reject an exam with 0 duration natively via validation", async () => {
+      await expect(
+        Exam.create({
+          title: "Zero Duration Exam",
+          teacherId,
+          questions: [],
+          scheduledAt: new Date(),
+          duration: 0,
+          endTime: new Date(),
+        })
+      ).rejects.toThrow(mongoose.Error.ValidationError);
     });
   });
 });
