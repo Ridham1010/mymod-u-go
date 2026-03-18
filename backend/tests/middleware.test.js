@@ -48,6 +48,7 @@ describe("Auth Middleware", () => {
       expect(mockRes.json).toHaveBeenCalledWith({ message: "Invalid token" });
       expect(mockNext).not.toHaveBeenCalled();
     });
+
   });
 
   // ─── Logic Checks: Successful token verification ──────────────
@@ -82,12 +83,13 @@ describe("Rate Limiter Configuration", () => {
   let rateLimiter;
 
   beforeEach(() => {
+    jest.resetModules();
     rateLimiter = require("../middleware/rateLimiter");
   });
 
   // ─── OO Checks: Exported objects ──────────────────────────────
   describe("OO Checks: Module exports", () => {
-    test("should export apiLimiter", () => {
+    test("should export apiLimiter as a function", () => {
       expect(rateLimiter.apiLimiter).toBeDefined();
       expect(typeof rateLimiter.apiLimiter).toBe("function");
     });
