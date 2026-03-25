@@ -20,6 +20,7 @@ const CreateExam = () => {
       question: "",
       options: ["", "", "", ""],
       correctAnswer: "",
+      modelAnswer: "",
       points: 1,
       constraints: {
         wordLimit: null,
@@ -73,6 +74,7 @@ const CreateExam = () => {
           question: q.question,
           options: q.options?.length > 0 ? q.options : ["", "", "", ""],
           correctAnswer: q.correctAnswer,
+          modelAnswer: q.modelAnswer || "",
           points: q.points || 1,
           constraints: q.constraints || {
             wordLimit: null,
@@ -114,6 +116,7 @@ const CreateExam = () => {
         question: "",
         options: ["", "", "", ""],
         correctAnswer: "",
+        modelAnswer: "",
         points: 1,
         constraints: {
           wordLimit: null,
@@ -230,6 +233,7 @@ const CreateExam = () => {
               ? q.options.filter((opt) => opt.trim() !== "")
               : [],
           correctAnswer: q.correctAnswer,
+          modelAnswer: q.modelAnswer || "",
           points: q.points,
           constraints: q.constraints || {
             wordLimit: null,
@@ -676,6 +680,24 @@ const CreateExam = () => {
                   />
                 )}
               </div>
+
+              {(question.type === "short_answer" || question.type === "essay" || question.type === "fill_blank") && (
+                <div className="form-group">
+                  <label>Model Answer (AI Grading Reference) *</label>
+                  <textarea
+                    value={question.modelAnswer}
+                    onChange={(e) =>
+                      updateQuestion(qIndex, "modelAnswer", e.target.value)
+                    }
+                    placeholder="Enter the ideal or model answer. The AI will compare student answers against this text."
+                    rows={3}
+                    required
+                  />
+                  <p className="setting-description" style={{ marginTop: "4px" }}>
+                    Required for AI Semantic Grading. Ensure you provide a comprehensive answer.
+                  </p>
+                </div>
+              )}
             </div>
           ))}
         </div>

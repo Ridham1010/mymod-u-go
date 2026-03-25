@@ -41,6 +41,13 @@ app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/proctoring", require("./routes/proctoring"));
 app.use("/api/reports", require("./routes/reports"));
 app.use("/api/admin", require("./routes/admin"));
+app.use("/api/grading", require("./routes/grading"));
+
+// Initialize grading queue (async — non-blocking)
+const { initGradingQueue } = require("./services/gradingQueue");
+initGradingQueue().catch((err) =>
+  console.warn("Grading queue init warning:", err.message)
+);
 
 app.get("/", (req, res) => {
   res.json({ message: "MOD-U-GO API is running", version: "2.0.0" });

@@ -861,9 +861,15 @@ const TakeExam = () => {
 
       const result = await examService.submitExam(token, submissionData);
 
-      alert(
-        `Exam submitted successfully!\nScore: ${result.score}/${result.maxScore} (${result.percentage}%)`,
-      );
+      if (result.gradingStatus === "grading" || result.submission.status === "grading") {
+        alert(
+          "Exam submitted successfully! AI grading is currently in progress for your text answers. You will be able to view your final score in the dashboard later."
+        );
+      } else {
+        alert(
+          `Exam submitted successfully!\nScore: ${result.score}/${result.maxScore} (${result.percentage}%)`
+        );
+      }
       navigate("/dashboard", { replace: true });
     } catch (error) {
       console.error("Error submitting exam:", error);

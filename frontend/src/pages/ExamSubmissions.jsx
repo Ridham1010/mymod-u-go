@@ -75,6 +75,9 @@ const ExamSubmissions = () => {
     if (filterStatus === "flagged") return s.isFlagged;
     if (filterStatus === "submitted") return s.status === "submitted";
     if (filterStatus === "in_progress") return s.status === "in_progress";
+    if (filterStatus === "grading") return s.status === "grading";
+    if (filterStatus === "graded") return s.status === "graded";
+    if (filterStatus === "partially_graded") return s.status === "partially_graded";
     if (filterStatus === "locked") return s.status === "locked";
     return true;
   });
@@ -82,9 +85,23 @@ const ExamSubmissions = () => {
   const getStatusClass = (submission) => {
     if (submission.status === "locked") return "status-locked";
     if (submission.isFlagged) return "status-flagged";
+    if (submission.status === "grading") return "status-progress";
+    if (submission.status === "partially_graded") return "status-flagged";
     if (submission.status === "submitted") return "status-submitted";
     if (submission.status === "graded") return "status-graded";
     return "status-progress";
+  };
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      in_progress: "In Progress",
+      submitted: "Submitted",
+      grading: "AI Grading...",
+      graded: "Graded",
+      partially_graded: "Needs Review",
+      locked: "Locked",
+    };
+    return labels[status] || status;
   };
 
   if (loading) {
@@ -150,6 +167,18 @@ const ExamSubmissions = () => {
             Submitted (
             {submissions.filter((s) => s.status === "submitted").length})
           </option>
+          <option value="grading">
+            AI Grading (
+            {submissions.filter((s) => s.status === "grading").length})
+          </option>
+          <option value="graded">
+            Graded (
+            {submissions.filter((s) => s.status === "graded").length})
+          </option>
+          <option value="partially_graded">
+            Needs Review (
+            {submissions.filter((s) => s.status === "partially_graded").length})
+          </option>
           <option value="in_progress">
             In Progress (
             {submissions.filter((s) => s.status === "in_progress").length})
@@ -203,17 +232,25 @@ const ExamSubmissions = () => {
                       <span
                         className={`status-badge ${submission.status} ${submission.isFlagged ? "flagged" : ""}`}
                       >
-                        {submission.status === "locked" ? "🔒 " : submission.isFlagged ? "[!] " : ""}
-                        {submission.status}
+                        {submission.status === "locked" ? "Locked " : submission.isFlagged ? "[!] " : ""}
+                        {getStatusLabel(submission.status)}
                       </span>
                     </td>
                     <td>
-                      <span
-                        className={`score ${submission.percentage >= 50 ? "pass" : "fail"}`}
-                      >
-                        {submission.score}/{submission.maxScore} (
-                        {submission.percentage}%)
-                      </span>
+                      {submission.status === "grading" ? (
+                        <span className="score" style={{ color: '#ff9800' }}>AI Grading...</span>
+                      ) : submission.status === "partially_graded" ? (
+                        <span className="score" style={{ color: '#f57c00' }}>
+                          {submission.score}/{submission.maxScore} (Partial)
+                        </span>
+                      ) : (
+                        <span
+                          className={`score ${submission.percentage >= 50 ? "pass" : "fail"}`}
+                        >
+                          {submission.score}/{submission.maxScore} (
+                          {submission.percentage}%)
+                        </span>
+                      )}
                     </td>
                     <td
                       className={submission.tabSwitchCount > 3 ? "warning" : ""}
@@ -381,11 +418,50 @@ const ExamSubmissions = () => {
                             </span>
                           </div>
                           <div className="answer-box correct-answer-box">
-                            <label>Correct Answer</label>
+                            <label>Correct Answer / Model Answer</label>
                             <span className="answer-value">
-                              {question.correctAnswer}
+                              {question.modelAnswer || question.correctAnswer}
                             </span>
                           </div>
+                        </div>
+
+                        {/* SLM Grading Metrics & Manual Override */}
+                        {answer?.gradingMethod === "slm_semantic" && (
+                          <div className="slm-metrics" style={{ marginTop: '10px', padding: '10px', background: '#eef2f5', borderRadius: '4px', fontSize: '0.85rem' }}>
+                            <strong>🤖 AI Semantic Grading:</strong> {answer.gradingStatus === "graded" ? "Evaluated" : "Pending / Timeout"}<br/>
+                            <strong>Similarity Score:</strong> {answer.slmScore !== null ? (answer.slmScore * 100).toFixed(0) + "%" : "N/A"}<br/>
+                            <strong>Marks Awarded:</strong> {answer.marksAwarded} / {question.points}
+                          </div>
+                        )}
+
+                        <div className="override-action" style={{ marginTop: '10px', textAlign: 'right' }}>
+                          <button 
+                            className="btn-submit" 
+                            style={{ padding: '4px 12px', fontSize: '0.8rem', background: '#ff9800', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            onClick={async () => {
+                              const newMarks = window.prompt(`Enter new marks for this answer (Max: ${question.points}):`, answer?.marksAwarded || 0);
+                              if (newMarks !== null && !isNaN(parseInt(newMarks))) {
+                                try {
+                                  const token = await getAuthToken();
+                                  await examService.overrideGrade(
+                                    token, 
+                                    selectedSubmission._id, 
+                                    question._id, 
+                                    answer?.slmScore || 0, 
+                                    parseInt(newMarks), 
+                                    "Manual override by teacher"
+                                  );
+                                  alert("Grade overridden successfully!");
+                                  setSelectedSubmission(null);
+                                  fetchData();
+                                } catch (error) {
+                                  alert("Error overriding grade: " + (error.response?.data?.message || error.message));
+                                }
+                              }
+                            }}
+                          >
+                            ✎ Override Grade
+                          </button>
                         </div>
                       </div>
                     );
