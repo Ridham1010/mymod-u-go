@@ -4,6 +4,7 @@ import * as faceapi from "face-api.js";
 import { useAuth } from "../contexts/AuthContext";
 import { examService } from "../services/examService";
 import CalibrationScreen from "../components/CalibrationScreen";
+import GazeTracker from "../components/GazeTracker";
 import "./TakeExam.css";
 
 const TakeExam = () => {
@@ -49,6 +50,7 @@ const TakeExam = () => {
   const faceDetectionIntervalRef = useRef(null);
   const faceModelsLoadedRef = useRef(false); // Tracks whether face-api models are loaded
   const lastFaceEventRef = useRef({}); // Per-event cooldown timestamps
+  const gazeTrackerRef = useRef(null); // WebGazer-based gaze deviation tracker
 
   // Load exam data on mount (for instructions screen)
   useEffect(() => {
@@ -278,10 +280,21 @@ const TakeExam = () => {
         const pts = detections[0].landmarks.positions;
         const box = detections[0].detection.box;
 
-        // Eye centers (left: 36-41, right: 42-47)
+        // Helper: average coordinate for a set of landmark indices
         const mx = (idx) => idx.reduce((s, i) => s + pts[i].x, 0) / idx.length;
-        const eyeMidX = (mx([36,37,38,39,40,41]) + mx([42,43,44,45,46,47])) / 2;
-        const headTurnRatio = Math.abs(pts[33].x - eyeMidX) / box.width;
+        const my = (idx) => idx.reduce((s, i) => s + pts[i].y, 0) / idx.length;
+
+        // Eye centers (left: 36-41, right: 42-47)
+        const leftEyeIdx  = [36,37,38,39,40,41];
+        const rightEyeIdx = [42,43,44,45,46,47];
+        const eyeMidX = (mx(leftEyeIdx) + mx(rightEyeIdx)) / 2;
+        const eyeMidY = (my(leftEyeIdx) + my(rightEyeIdx)) / 2;
+
+        // Horizontal head turn: nose tip (33) vs eye center
+        const headTurnRatioH = Math.abs(pts[33].x - eyeMidX) / box.width;
+
+        // Vertical head tilt: nose tip vs eye center (detects looking up/down)
+        const headTurnRatioV = Math.abs(pts[33].y - eyeMidY) / box.height;
 
         // Eye Aspect Ratio – detects closed/downcast eyes
         const d = (a, b) => Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y);
@@ -289,10 +302,46 @@ const TakeExam = () => {
         const rightEAR = (d(43,47) + d(44,46)) / (2 * d(42,45));
         const avgEAR = (leftEAR + rightEAR) / 2;
 
-        if (headTurnRatio > 0.18) {
+        // Iris position ratio — detects sideways eye gaze without head turn
+        // Measures where the iris sits within the eye opening (0 = left edge, 1 = right edge)
+        // Left eye: inner corner = 39, outer corner = 36
+        const leftIrisX  = mx([37,38]); // top lid midpoints approximate iris center
+        const leftIrisRatio  = (leftIrisX - pts[36].x) / (pts[39].x - pts[36].x || 1);
+        // Right eye: inner corner = 42, outer corner = 45
+        const rightIrisX = mx([43,44]);
+        const rightIrisRatio = (rightIrisX - pts[42].x) / (pts[45].x - pts[42].x || 1);
+        const avgIrisRatio = (leftIrisRatio + rightIrisRatio) / 2;
+        // Centered ≈ 0.5; looking left < 0.35; looking right > 0.65
+        const irisDeviation = Math.abs(avgIrisRatio - 0.5);
+
+        // Vertical iris ratio — detects looking up/down
+        const leftIrisY  = (pts[37].y + pts[38].y) / 2;
+        const leftEyeTop = (pts[37].y + pts[38].y) / 2;
+        const leftEyeBot = (pts[40].y + pts[41].y) / 2;
+        const rightIrisY = (pts[43].y + pts[44].y) / 2;
+        const rightEyeTop = (pts[43].y + pts[44].y) / 2;
+        const rightEyeBot = (pts[46].y + pts[47].y) / 2;
+        const leftVertRatio  = (leftIrisY - leftEyeTop) / (leftEyeBot - leftEyeTop || 1);
+        const rightVertRatio = (rightIrisY - rightEyeTop) / (rightEyeBot - rightEyeTop || 1);
+        const avgVertIrisRatio = (leftVertRatio + rightVertRatio) / 2;
+        const vertIrisDeviation = Math.abs(avgVertIrisRatio - 0.5);
+
+        if (headTurnRatioH > 0.15) {
           setFaceStatus("looking_away");
           if (canLog("suspicious_movement", 20000))
-            logProctoringEvent("suspicious_movement", "medium", `Head turned away (${Math.round(headTurnRatio*100)}% offset)`);
+            logProctoringEvent("suspicious_movement", "medium", `Head turned horizontally (${Math.round(headTurnRatioH*100)}% offset)`);
+        } else if (headTurnRatioV > 0.35) {
+          setFaceStatus("looking_away");
+          if (canLog("suspicious_movement", 20000))
+            logProctoringEvent("suspicious_movement", "medium", `Head tilted vertically (${Math.round(headTurnRatioV*100)}% offset)`);
+        } else if (irisDeviation > 0.18) {
+          setFaceStatus("looking_away");
+          if (canLog("suspicious_movement", 20000))
+            logProctoringEvent("suspicious_movement", "medium", `Eyes looking sideways (iris offset: ${irisDeviation.toFixed(2)})`);
+        } else if (vertIrisDeviation > 0.3) {
+          setFaceStatus("looking_away");
+          if (canLog("suspicious_movement", 20000))
+            logProctoringEvent("suspicious_movement", "medium", `Eyes looking up/down (iris offset: ${vertIrisDeviation.toFixed(2)})`);
         } else if (avgEAR < 0.15) {
           setFaceStatus("looking_away");
           if (canLog("suspicious_movement", 20000))
@@ -402,6 +451,23 @@ const TakeExam = () => {
 
     // Start live AI face detection
     startLiveFaceDetection();
+
+    // Start WebGazer-based gaze tracking (sustainment-threshold model)
+    startGazeTracking();
+  };
+
+  const startGazeTracking = () => {
+    if (gazeTrackerRef.current) return; // already running
+    const tracker = new GazeTracker({
+      onViolation: (details) => {
+        logProctoringEvent("gaze_deviation", "high", details);
+        showFocusWarning(
+          "Warning: Your gaze left the screen for more than 5 seconds. This has been flagged as a violation."
+        );
+      },
+    });
+    gazeTrackerRef.current = tracker;
+    tracker.start();
   };
 
   const handleCalibrationFailed = (error) => {
@@ -687,6 +753,10 @@ const TakeExam = () => {
       clearInterval(faceDetectionIntervalRef.current);
       faceDetectionIntervalRef.current = null;
     }
+    if (gazeTrackerRef.current) {
+      gazeTrackerRef.current.stop();
+      gazeTrackerRef.current = null;
+    }
     if (focusWarningTimerRef.current) {
       clearTimeout(focusWarningTimerRef.current);
     }
@@ -858,6 +928,7 @@ const TakeExam = () => {
             <h3>Proctoring Notice</h3>
             <ul>
               <li>Your webcam will be enabled during the exam</li>
+              <li>Eye gaze tracking is active — looking away for more than 5 seconds will be flagged</li>
               <li>Tab switching and window focus will be monitored</li>
               <li>Fullscreen mode is required</li>
               <li>Copy/paste and right-click are disabled</li>
