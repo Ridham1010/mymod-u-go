@@ -9,6 +9,28 @@ const answerSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  isCorrect: {
+    type: Boolean,
+    default: false,
+  },
+  slmScore: {
+    type: Number,
+    default: null, // Raw SLM similarity score ∈ [0.0, 1.0]
+  },
+  marksAwarded: {
+    type: Number,
+    default: 0,
+  },
+  gradingStatus: {
+    type: String,
+    enum: ["ungraded", "graded", "pending_review", "error"],
+    default: "ungraded",
+  },
+  gradingMethod: {
+    type: String,
+    enum: ["exact_match", "slm_semantic", "manual"],
+    default: "exact_match",
+  },
   updatedAt: {
     type: Date,
     default: Date.now,
@@ -78,8 +100,11 @@ const submissionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["in_progress", "submitted", "graded", "flagged", "locked"],
+    enum: ["in_progress", "submitted", "grading", "graded", "partially_graded", "flagged", "locked"],
     default: "in_progress",
+  },
+  gradingCompletedAt: {
+    type: Date,
   },
   startedAt: {
     type: Date,

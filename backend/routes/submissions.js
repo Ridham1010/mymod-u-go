@@ -6,6 +6,8 @@ const User = require("../models/User");
 const Notification = require("../models/Notification");
 const verifyFirebaseToken = require("../middleware/auth");
 const { submissionLimiter } = require("../middleware/rateLimiter");
+const { gradeMCQ, EXACT_MATCH_TYPES, SLM_GRADED_TYPES } = require("../services/autoGrader");
+const { enqueueGrading } = require("../services/gradingQueue");
 
 // Start an exam (creates in-progress submission)
 router.post("/start", verifyFirebaseToken, async (req, res) => {
@@ -198,28 +200,46 @@ router.post("/", submissionLimiter, verifyFirebaseToken, async (req, res) => {
       });
     }
 
-    // Calculate score
-    let score = 0;
+    // ── Grading: Split MCQ (instant) vs Text (async SLM) ──────────
+    let mcqScore = 0;
+    let hasTextQuestions = false;
+
     const processedAnswers = answers.map((answer) => {
       const question = exam.questions.id(answer.questionId);
-      if (question) {
-        const isCorrect =
-          question.correctAnswer.toLowerCase().trim() ===
-          (answer.answer || "").toLowerCase().trim();
-        if (isCorrect) {
-          score += question.points;
-        }
-      }
-      return {
+      const answerData = {
         questionId: answer.questionId,
         answer: answer.answer || "",
         updatedAt: new Date(),
+        gradingStatus: "ungraded",
+        gradingMethod: "exact_match",
+        isCorrect: false,
+        slmScore: null,
+        marksAwarded: 0,
       };
+
+      if (question) {
+        if (EXACT_MATCH_TYPES.includes(question.type)) {
+          // MCQ / true_false — grade instantly via exact match
+          const result = gradeMCQ(answer.answer, question.correctAnswer);
+          answerData.isCorrect = result.isCorrect;
+          answerData.slmScore = result.slmScore;
+          answerData.marksAwarded = result.isCorrect ? question.points : 0;
+          answerData.gradingStatus = "graded";
+          answerData.gradingMethod = "exact_match";
+          mcqScore += answerData.marksAwarded;
+        } else if (SLM_GRADED_TYPES.includes(question.type)) {
+          // Text-based — will be graded async by SLM
+          hasTextQuestions = true;
+          answerData.gradingStatus = "ungraded";
+          answerData.gradingMethod = "slm_semantic";
+        }
+      }
+
+      return answerData;
     });
 
     submission.answers = processedAnswers;
-    submission.score = score;
-    submission.status = "submitted";
+    submission.score = mcqScore; // Partial score (MCQ only) until SLM completes
     submission.submittedAt = new Date();
     submission.tabSwitchCount =
       tabSwitchCount || submission.tabSwitchCount || 0;
@@ -232,12 +252,20 @@ router.post("/", submissionLimiter, verifyFirebaseToken, async (req, res) => {
       submission.flagReason = `High violation count: ${tabSwitchCount} tab switches, ${fullscreenExitCount} fullscreen exits`;
     }
 
-    await submission.save();
+    if (hasTextQuestions) {
+      // Has text questions → set to "grading", save immediately
+      submission.status = "grading";
+      await submission.save();
+    } else {
+      // All MCQ — fully graded immediately
+      submission.status = "submitted";
+      await submission.save();
+    }
 
     // Update exam statistics
     const allSubmissions = await Submission.find({
       examId,
-      status: "submitted",
+      status: { $in: ["submitted", "graded", "partially_graded"] },
     });
     const avgScore =
       allSubmissions.length > 0
@@ -254,7 +282,9 @@ router.post("/", submissionLimiter, verifyFirebaseToken, async (req, res) => {
       userId: user._id,
       type: "exam_submitted",
       title: "Exam Submitted",
-      message: `Your submission for "${exam.title}" has been received. Score: ${submission.percentage}%`,
+      message: hasTextQuestions
+        ? `Your submission for "${exam.title}" is being graded by AI. You'll be notified when complete.`
+        : `Your submission for "${exam.title}" has been received. Score: ${submission.percentage}%`,
       data: { examId, submissionId: submission._id },
       priority: "medium",
     });
@@ -271,13 +301,24 @@ router.post("/", submissionLimiter, verifyFirebaseToken, async (req, res) => {
       });
     }
 
+    // *** RESPOND TO STUDENT IMMEDIATELY — do NOT wait for grading ***
     res.status(201).json({
       submission,
-      message: "Exam submitted successfully",
+      message: hasTextQuestions
+        ? "Exam submitted — AI grading in progress"
+        : "Exam submitted successfully",
       score: submission.score,
       maxScore: submission.maxScore,
       percentage: submission.percentage,
+      gradingStatus: hasTextQuestions ? "grading" : "completed",
     });
+
+    // *** FIRE-AND-FORGET: Enqueue grading AFTER response is sent ***
+    if (hasTextQuestions) {
+      enqueueGrading(submission._id.toString()).catch((err) =>
+        console.error("Error enqueuing grading job:", err.message)
+      );
+    }
   } catch (error) {
     console.error("Error submitting exam:", error);
     res.status(500).json({ message: "Server error", error: error.message });

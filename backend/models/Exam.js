@@ -19,6 +19,10 @@ const questionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  modelAnswer: {
+    type: String,
+    default: "", // Used by SLM grading engine; falls back to correctAnswer if empty
+  },
   points: {
     type: Number,
     default: 1,
@@ -114,6 +118,10 @@ const examSchema = new mongoose.Schema({
     autoSubmitOnTimeUp: {
       type: Boolean,
       default: true,
+    },
+    enableNegativeMarking: {
+      type: Boolean,
+      default: false, // Teacher-configurable; no negative marking by default
     },
     // REQ-16: Proctoring Window — configurable per exam by teacher
     proctoringWindow: {
