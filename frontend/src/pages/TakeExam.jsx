@@ -314,35 +314,19 @@ const TakeExam = () => {
         // Centered ≈ 0.5; looking left < 0.35; looking right > 0.65
         const irisDeviation = Math.abs(avgIrisRatio - 0.5);
 
-        // Vertical iris ratio — detects looking up/down
-        const leftIrisY  = (pts[37].y + pts[38].y) / 2;
-        const leftEyeTop = (pts[37].y + pts[38].y) / 2;
-        const leftEyeBot = (pts[40].y + pts[41].y) / 2;
-        const rightIrisY = (pts[43].y + pts[44].y) / 2;
-        const rightEyeTop = (pts[43].y + pts[44].y) / 2;
-        const rightEyeBot = (pts[46].y + pts[47].y) / 2;
-        const leftVertRatio  = (leftIrisY - leftEyeTop) / (leftEyeBot - leftEyeTop || 1);
-        const rightVertRatio = (rightIrisY - rightEyeTop) / (rightEyeBot - rightEyeTop || 1);
-        const avgVertIrisRatio = (leftVertRatio + rightVertRatio) / 2;
-        const vertIrisDeviation = Math.abs(avgVertIrisRatio - 0.5);
-
-        if (headTurnRatioH > 0.15) {
+        if (headTurnRatioH > 0.10) {
           setFaceStatus("looking_away");
           if (canLog("suspicious_movement", 20000))
             logProctoringEvent("suspicious_movement", "medium", `Head turned horizontally (${Math.round(headTurnRatioH*100)}% offset)`);
-        } else if (headTurnRatioV > 0.35) {
+        } else if (headTurnRatioV > 0.25) {
           setFaceStatus("looking_away");
           if (canLog("suspicious_movement", 20000))
             logProctoringEvent("suspicious_movement", "medium", `Head tilted vertically (${Math.round(headTurnRatioV*100)}% offset)`);
-        } else if (irisDeviation > 0.18) {
+        } else if (irisDeviation > 0.13) {
           setFaceStatus("looking_away");
           if (canLog("suspicious_movement", 20000))
             logProctoringEvent("suspicious_movement", "medium", `Eyes looking sideways (iris offset: ${irisDeviation.toFixed(2)})`);
-        } else if (vertIrisDeviation > 0.3) {
-          setFaceStatus("looking_away");
-          if (canLog("suspicious_movement", 20000))
-            logProctoringEvent("suspicious_movement", "medium", `Eyes looking up/down (iris offset: ${vertIrisDeviation.toFixed(2)})`);
-        } else if (avgEAR < 0.15) {
+        } else if (avgEAR < 0.18) {
           setFaceStatus("looking_away");
           if (canLog("suspicious_movement", 20000))
             logProctoringEvent("suspicious_movement", "medium", `Eyes closed/downcast (EAR: ${avgEAR.toFixed(2)})`);
@@ -359,7 +343,7 @@ const TakeExam = () => {
     try {
       await ensureModelsLoaded();
       setFaceStatus("ok");
-      faceDetectionIntervalRef.current = setInterval(analyzeFaceDetection, 5000);
+      faceDetectionIntervalRef.current = setInterval(analyzeFaceDetection, 2000);
     } catch (err) {
       console.error("Failed to start live face detection:", err);
     }
