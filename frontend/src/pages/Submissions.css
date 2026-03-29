@@ -1,145 +1,633 @@
-/* My Submissions Page */
-.submissions-page {
+/* ═══════════════════════════════════════════════════════════════
+   My Submissions — Student View
+   ═══════════════════════════════════════════════════════════════ */
+
+.ms-page {
   min-height: 100vh;
-  background: #f7f8fc;
+  background: #f1f3f8;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
-.submissions-header {
-  background: white;
-  padding: 20px 40px;
-  border-bottom: 1px solid #eef0f4;
+/* ── Header ──────────────────────────────────────────────────── */
+.ms-header {
+  background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+  padding: 28px 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  color: white;
+  box-shadow: 0 2px 12px rgba(30, 58, 95, 0.25);
 }
 
-.submissions-header h1 {
+.ms-header h1 {
   margin: 0;
-  color: #1f2937;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
 }
 
-.btn-back {
-  padding: 8px 18px;
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+.ms-header-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  opacity: 0.75;
+  font-weight: 400;
+}
+
+.ms-btn-back {
+  padding: 9px 22px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
   font-size: 13px;
-  transition: all 0.15s;
-}
-
-.btn-back:hover {
-  background: #e5e7eb;
-}
-
-.submissions-content {
-  max-width: 1200px;
-  margin: 24px auto;
-  padding: 0 40px;
-}
-
-.no-data {
-  background: white;
-  padding: 60px 40px;
-  border-radius: 10px;
-  text-align: center;
-  color: #6b7280;
-  font-size: 15px;
-  border: 1px solid #eef0f4;
-}
-
-.submissions-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 16px;
-}
-
-.submission-card {
-  background: white;
-  padding: 20px 24px;
-  border-radius: 10px;
-  border: 1px solid #eef0f4;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: all 0.2s;
 }
 
-.submission-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+.ms-btn-back:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Content ─────────────────────────────────────────────────── */
+.ms-content {
+  max-width: 1200px;
+  margin: 28px auto;
+  padding: 0 40px;
+}
+
+/* ── Empty State ─────────────────────────────────────────────── */
+.ms-empty {
+  background: white;
+  padding: 80px 40px;
+  border-radius: 16px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 15px;
+  border: 1px solid #e8eaf0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.ms-empty-icon {
+  font-size: 48px;
+  margin-bottom: 4px;
+}
+
+.ms-btn-primary {
+  margin-top: 8px;
+  padding: 10px 24px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.ms-btn-primary:hover {
+  background: #1d4ed8;
+}
+
+/* ── Card Grid ───────────────────────────────────────────────── */
+.ms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 18px;
+}
+
+/* ── Submission Card ─────────────────────────────────────────── */
+.ms-card {
+  background: white;
+  padding: 22px 26px;
+  border-radius: 14px;
+  border: 1px solid #e8eaf0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+
+.ms-card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
 }
 
-.submission-header {
+.ms-card-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
   margin-bottom: 8px;
 }
 
-.submission-header h3 {
+.ms-card-title {
   margin: 0;
+  font-size: 17px;
+  font-weight: 700;
   color: #1f2937;
-  font-size: 16px;
-  font-weight: 600;
+  letter-spacing: -0.2px;
 }
 
-.score-badge {
-  background: #dcfce7;
-  color: #166534;
+.ms-status-badge {
+  display: inline-flex;
+  align-items: center;
   padding: 4px 12px;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid;
+  letter-spacing: 0.1px;
 }
 
-.submission-description {
+.ms-card-desc {
   color: #6b7280;
-  margin-bottom: 12px;
   font-size: 13px;
   line-height: 1.5;
-  min-height: 36px;
+  margin: 0 0 14px;
 }
 
-.submission-details {
+/* Card stats */
+.ms-card-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 0;
   border-top: 1px solid #f3f4f6;
-  padding-top: 12px;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: 16px;
 }
 
-.submission-details p {
-  margin: 4px 0;
-  color: #4b5563;
+.ms-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 70px;
+}
+
+.ms-stat-label {
+  font-size: 10px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 600;
+}
+
+.ms-stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.ms-stat-value.pass {
+  color: #16a34a;
+}
+
+.ms-stat-value.fail {
+  color: #dc2626;
+}
+
+.ms-stat-value.small {
   font-size: 13px;
+  font-weight: 600;
 }
 
-.submission-details strong {
+.ms-stat-row {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.ms-stat-row.grading-msg {
+  color: #d97706;
+}
+
+.ms-stat-row.partial-msg {
+  color: #ea580c;
+}
+
+/* View button */
+.ms-btn-view {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s;
+  text-align: center;
+  margin-top: auto;
+}
+
+.ms-btn-view:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.ms-btn-view:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DETAIL MODAL
+   ═══════════════════════════════════════════════════════════════ */
+.ms-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(3px);
+  animation: msFadeIn 0.15s ease-out;
+}
+
+@keyframes msFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ms-modal {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 820px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  animation: msSlideUp 0.2s ease-out;
+}
+
+@keyframes msSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal Header */
+.ms-modal-header {
+  padding: 22px 28px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: linear-gradient(135deg, #f8f9fc, #eef2ff);
+  flex-shrink: 0;
+}
+
+.ms-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  letter-spacing: -0.3px;
+}
+
+.ms-modal-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.ms-score-display {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.ms-score-display.pass {
+  color: #16a34a;
+}
+
+.ms-score-display.fail {
+  color: #dc2626;
+}
+
+.ms-btn-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #9ca3af;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.ms-btn-close:hover {
+  color: #1f2937;
+  background: #e5e7eb;
+}
+
+/* Modal Body */
+.ms-modal-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Info banner */
+.ms-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #1e40af;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.ms-info-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* ── Question Cards ──────────────────────────────────────────── */
+.ms-questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ms-question-card {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 18px 22px;
+  border-left: 4px solid #d1d5db;
+  transition: border-color 0.2s;
+}
+
+.ms-question-card.correct {
+  border-left-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.ms-question-card.incorrect {
+  border-left-color: #dc2626;
+  background: #fef2f2;
+}
+
+/* Question header */
+.ms-q-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ms-q-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ms-q-number {
+  font-weight: 800;
+  font-size: 14px;
   color: #374151;
 }
 
-.loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  font-size: 16px;
+.ms-q-type {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #e5e7eb;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ms-q-marks {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.ms-q-marks.correct {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ms-q-marks.incorrect {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Question text */
+.ms-q-text {
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+
+/* Answer grid */
+.ms-answer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ms-answer-grid.single {
+  grid-template-columns: 1fr;
+}
+
+.ms-answer-box {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: white;
+  border: 1px solid #e5e7eb;
+}
+
+.ms-answer-box label {
+  display: block;
+  font-size: 10px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.ms-answer-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  line-height: 1.5;
+}
+
+.ms-answer-text.correct {
+  color: #16a34a;
+}
+
+.ms-answer-text.incorrect {
+  color: #dc2626;
+}
+
+.ms-answer-box.correct-answer {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+/* Grading method indicator */
+.ms-grading-method {
+  margin-top: 10px;
+}
+
+.ms-gm {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.ms-gm.manual {
+  background: #fff7ed;
+  color: #92400e;
+}
+
+.ms-gm.ai {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.ms-gm.auto {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+/* Explanation */
+.ms-explanation {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #fffbeb;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #92400e;
+  border-left: 3px solid #f59e0b;
+}
+
+/* Submission footer */
+.ms-submission-footer {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.ms-submission-footer p {
+  margin: 4px 0;
+  font-size: 13px;
   color: #6b7280;
 }
 
+.ms-submission-footer strong {
+  color: #374151;
+}
+
+.ms-review-notes {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #f8f9fc;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  color: #374151;
+}
+
+.ms-review-notes p {
+  margin: 6px 0 0;
+  color: #4b5563;
+  white-space: pre-wrap;
+}
+
+/* ── Loading ─────────────────────────────────────────────────── */
+.ms-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  min-height: 100vh;
+  font-size: 16px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.ms-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: msSpin 0.7s linear infinite;
+}
+
+@keyframes msSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .submissions-header {
-    padding: 16px 20px;
+  .ms-header {
+    padding: 18px 20px;
     flex-direction: column;
     gap: 12px;
+    text-align: center;
   }
 
-  .submissions-content {
+  .ms-content {
     padding: 0 16px;
+    margin: 16px auto;
   }
 
-  .submissions-list {
+  .ms-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ms-modal {
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+
+  .ms-modal-header {
+    padding: 16px 20px;
+  }
+
+  .ms-modal-body {
+    padding: 16px 20px;
+  }
+
+  .ms-answer-grid {
     grid-template-columns: 1fr;
   }
 }

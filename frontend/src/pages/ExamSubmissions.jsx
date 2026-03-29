@@ -637,7 +637,7 @@ const ExamSubmissions = () => {
               {/* ── Answers Section ── */}
               <div className="answers-section">
                 <h3>
-                  Answers &amp; Grading
+                  Answers & Grading
                   <span className="answers-count">
                     {exam?.questions?.length} question
                     {exam?.questions?.length !== 1 ? "s" : ""}
@@ -646,7 +646,7 @@ const ExamSubmissions = () => {
                 <div className="answers-list">
                   {exam?.questions?.map((question, index) => {
                     const answer = selectedSubmission.answers?.find(
-                      (a) => a.questionId === question._id
+                      (a) => String(a.questionId) === String(question._id)
                     );
                     const { isCorrect, awarded } = getAnswerStatus(
                       answer,
