@@ -15,6 +15,12 @@ const ExamSubmissions = () => {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [reviewNotes, setReviewNotes] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  // Manual override state
+  const [editingQuestionId, setEditingQuestionId] = useState(null);
+  const [editMarks, setEditMarks] = useState("");
+  const [overrideLoading, setOverrideLoading] = useState(false);
+  const [editingTotalScore, setEditingTotalScore] = useState(false);
+  const [editTotalMarks, setEditTotalMarks] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -67,6 +73,61 @@ const ExamSubmissions = () => {
       fetchData();
     } catch (error) {
       alert("Error reviewing submission: " + error.message);
+    }
+  };
+
+  // Handle per-question manual grade override
+  const handleOverrideGrade = async (questionId, maxPoints) => {
+    const marks = parseFloat(editMarks);
+    if (isNaN(marks) || marks < 0 || marks > maxPoints) {
+      alert(`Please enter a valid score between 0 and ${maxPoints}`);
+      return;
+    }
+
+    setOverrideLoading(true);
+    try {
+      const token = await getAuthToken();
+      await examService.overrideGrade(
+        token,
+        selectedSubmission._id,
+        questionId,
+        marks
+      );
+      // Refresh submission details
+      const data = await examService.getSubmission(token, selectedSubmission._id);
+      setSelectedSubmission(data.submission);
+      setEditingQuestionId(null);
+      setEditMarks("");
+      fetchData(); // Refresh table stats too
+    } catch (error) {
+      alert("Error overriding grade: " + (error.response?.data?.message || error.message));
+    } finally {
+      setOverrideLoading(false);
+    }
+  };
+
+  // Handle total score override
+  const handleOverrideTotalScore = async () => {
+    const newScore = parseFloat(editTotalMarks);
+    if (isNaN(newScore) || newScore < 0 || newScore > selectedSubmission.maxScore) {
+      alert(`Please enter a valid score between 0 and ${selectedSubmission.maxScore}`);
+      return;
+    }
+
+    setOverrideLoading(true);
+    try {
+      const token = await getAuthToken();
+      await examService.overrideTotalScore(token, selectedSubmission._id, newScore);
+      // Refresh submission details
+      const data = await examService.getSubmission(token, selectedSubmission._id);
+      setSelectedSubmission(data.submission);
+      setEditingTotalScore(false);
+      setEditTotalMarks("");
+      fetchData();
+    } catch (error) {
+      alert("Error overriding total score: " + (error.response?.data?.message || error.message));
+    } finally {
+      setOverrideLoading(false);
     }
   };
 
@@ -324,12 +385,55 @@ const ExamSubmissions = () => {
                 </div>
                 <div className="meta-item">
                   <label>Score</label>
-                  <span
-                    className={`score-display ${selectedSubmission.percentage >= 50 ? "pass" : "fail"}`}
-                  >
-                    {selectedSubmission.score}/{selectedSubmission.maxScore} (
-                    {selectedSubmission.percentage}%)
-                  </span>
+                  {editingTotalScore ? (
+                    <div className="inline-override-editor">
+                      <input
+                        type="number"
+                        className="override-input"
+                        value={editTotalMarks}
+                        onChange={(e) => setEditTotalMarks(e.target.value)}
+                        min={0}
+                        max={selectedSubmission.maxScore}
+                        step="0.5"
+                        autoFocus
+                        placeholder={`0 – ${selectedSubmission.maxScore}`}
+                      />
+                      <span className="override-max">/ {selectedSubmission.maxScore}</span>
+                      <button
+                        className="btn-override-save"
+                        onClick={handleOverrideTotalScore}
+                        disabled={overrideLoading}
+                      >
+                        {overrideLoading ? "…" : "✓"}
+                      </button>
+                      <button
+                        className="btn-override-cancel"
+                        onClick={() => { setEditingTotalScore(false); setEditTotalMarks(""); }}
+                        disabled={overrideLoading}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="score-with-override">
+                      <span
+                        className={`score-display ${selectedSubmission.percentage >= 50 ? "pass" : "fail"}`}
+                      >
+                        {selectedSubmission.score}/{selectedSubmission.maxScore} (
+                        {selectedSubmission.percentage}%)
+                      </span>
+                      <button
+                        className="btn-override-total"
+                        onClick={() => {
+                          setEditingTotalScore(true);
+                          setEditTotalMarks(String(selectedSubmission.score));
+                        }}
+                        title="Override total score"
+                      >
+                        ✎
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="meta-item">
                   <label>Status</label>
@@ -425,43 +529,73 @@ const ExamSubmissions = () => {
                           </div>
                         </div>
 
-                        {/* SLM Grading Metrics & Manual Override */}
-                        {answer?.gradingMethod === "slm_semantic" && (
-                          <div className="slm-metrics" style={{ marginTop: '10px', padding: '10px', background: '#eef2f5', borderRadius: '4px', fontSize: '0.85rem' }}>
-                            <strong>🤖 AI Semantic Grading:</strong> {answer.gradingStatus === "graded" ? "Evaluated" : "Pending / Timeout"}<br/>
-                            <strong>Similarity Score:</strong> {answer.slmScore !== null ? (answer.slmScore * 100).toFixed(0) + "%" : "N/A"}<br/>
-                            <strong>Marks Awarded:</strong> {answer.marksAwarded} / {question.points}
-                          </div>
-                        )}
+                        {/* Grading Info */}
+                        <div className="grading-info">
+                          {answer?.gradingMethod === "slm_semantic" && (
+                            <div className="slm-metrics">
+                              <strong>🤖 AI Semantic Grading:</strong> {answer.gradingStatus === "graded" ? "Evaluated" : "Pending / Timeout"}<br/>
+                              <strong>Similarity Score:</strong> {answer.slmScore !== null ? (answer.slmScore * 100).toFixed(0) + "%" : "N/A"}<br/>
+                              <strong>Marks Awarded:</strong> {answer.marksAwarded} / {question.points}
+                            </div>
+                          )}
+                          {answer?.gradingMethod === "manual" && (
+                            <div className="manual-grading-badge">
+                              ✎ Manually graded — {answer.marksAwarded} / {question.points}
+                            </div>
+                          )}
+                          {answer?.gradingMethod === "exact_match" && (
+                            <div className="auto-grading-badge">
+                              ⚡ Auto-graded — {answer.marksAwarded} / {question.points}
+                            </div>
+                          )}
+                        </div>
 
-                        <div className="override-action" style={{ marginTop: '10px', textAlign: 'right' }}>
-                          <button 
-                            className="btn-submit" 
-                            style={{ padding: '4px 12px', fontSize: '0.8rem', background: '#ff9800', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                            onClick={async () => {
-                              const newMarks = window.prompt(`Enter new marks for this answer (Max: ${question.points}):`, answer?.marksAwarded || 0);
-                              if (newMarks !== null && !isNaN(parseInt(newMarks))) {
-                                try {
-                                  const token = await getAuthToken();
-                                  await examService.overrideGrade(
-                                    token, 
-                                    selectedSubmission._id, 
-                                    question._id, 
-                                    answer?.slmScore || 0, 
-                                    parseInt(newMarks), 
-                                    "Manual override by teacher"
-                                  );
-                                  alert("Grade overridden successfully!");
-                                  setSelectedSubmission(null);
-                                  fetchData();
-                                } catch (error) {
-                                  alert("Error overriding grade: " + (error.response?.data?.message || error.message));
-                                }
-                              }
-                            }}
-                          >
-                            ✎ Override Grade
-                          </button>
+                        {/* Manual Override Controls */}
+                        <div className="override-action">
+                          {editingQuestionId === question._id ? (
+                            <div className="inline-override-editor">
+                              <label className="override-label">Set marks:</label>
+                              <input
+                                type="number"
+                                className="override-input"
+                                value={editMarks}
+                                onChange={(e) => setEditMarks(e.target.value)}
+                                min={0}
+                                max={question.points}
+                                step="0.5"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleOverrideGrade(question._id, question.points);
+                                  if (e.key === "Escape") { setEditingQuestionId(null); setEditMarks(""); }
+                                }}
+                              />
+                              <span className="override-max">/ {question.points}</span>
+                              <button
+                                className="btn-override-save"
+                                onClick={() => handleOverrideGrade(question._id, question.points)}
+                                disabled={overrideLoading}
+                              >
+                                {overrideLoading ? "Saving…" : "Save"}
+                              </button>
+                              <button
+                                className="btn-override-cancel"
+                                onClick={() => { setEditingQuestionId(null); setEditMarks(""); }}
+                                disabled={overrideLoading}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              className="btn-override"
+                              onClick={() => {
+                                setEditingQuestionId(question._id);
+                                setEditMarks(String(answer?.marksAwarded || 0));
+                              }}
+                            >
+                              ✎ Override Grade
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
