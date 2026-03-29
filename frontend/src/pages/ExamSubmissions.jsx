@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { examService } from "../services/examService";
@@ -6,8 +6,10 @@ import "./ExamSubmissions.css";
 
 const ExamSubmissions = () => {
   const { examId } = useParams();
-  const { getAuthToken, userProfile } = useAuth();
+  const { getAuthToken } = useAuth();
   const navigate = useNavigate();
+
+  // Core data
   const [exam, setExam] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [stats, setStats] = useState(null);
@@ -15,13 +17,25 @@ const ExamSubmissions = () => {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [reviewNotes, setReviewNotes] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  // Manual override state
+
+  // Override state
   const [editingQuestionId, setEditingQuestionId] = useState(null);
   const [editMarks, setEditMarks] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
   const [overrideLoading, setOverrideLoading] = useState(false);
   const [editingTotalScore, setEditingTotalScore] = useState(false);
   const [editTotalMarks, setEditTotalMarks] = useState("");
+  const [totalOverrideReason, setTotalOverrideReason] = useState("");
 
+  // Toast notification
+  const [toast, setToast] = useState(null);
+
+  const showToast = useCallback((message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  // ── Data fetching ──────────────────────────────────────────────
   useEffect(() => {
     fetchData();
   }, [examId]);
@@ -39,27 +53,56 @@ const ExamSubmissions = () => {
       setStats(submissionsData.stats);
     } catch (error) {
       console.error("Error fetching data:", error);
-      alert("Error loading submissions");
+      showToast("Error loading submissions", "error");
       navigate("/dashboard");
     } finally {
       setLoading(false);
     }
   };
 
+  // Refresh submission detail without closing modal
+  const refreshSubmissionDetail = async (submissionId) => {
+    try {
+      const token = await getAuthToken();
+      const data = await examService.getSubmission(token, submissionId);
+      setSelectedSubmission(data.submission);
+      setReviewNotes(data.submission.reviewNotes || "");
+    } catch (error) {
+      console.error("Error refreshing submission:", error);
+    }
+  };
+
+  // ── Handlers ───────────────────────────────────────────────────
   const handleViewSubmission = async (submission) => {
     try {
       const token = await getAuthToken();
       const data = await examService.getSubmission(token, submission._id);
       setSelectedSubmission(data.submission);
       setReviewNotes(data.submission.reviewNotes || "");
+      // Reset override state
+      setEditingQuestionId(null);
+      setEditMarks("");
+      setOverrideReason("");
+      setEditingTotalScore(false);
+      setEditTotalMarks("");
+      setTotalOverrideReason("");
     } catch (error) {
-      alert("Error loading submission details: " + error.message);
+      showToast("Error loading submission details", "error");
     }
+  };
+
+  const handleCloseModal = () => {
+    setSelectedSubmission(null);
+    setEditingQuestionId(null);
+    setEditMarks("");
+    setOverrideReason("");
+    setEditingTotalScore(false);
+    setEditTotalMarks("");
+    setTotalOverrideReason("");
   };
 
   const handleReviewSubmission = async (isFlagged) => {
     if (!selectedSubmission) return;
-
     try {
       const token = await getAuthToken();
       await examService.reviewSubmission(token, selectedSubmission._id, {
@@ -68,19 +111,34 @@ const ExamSubmissions = () => {
         flagReason: isFlagged ? reviewNotes : undefined,
       });
 
-      alert("Submission reviewed successfully");
-      setSelectedSubmission(null);
+      showToast(
+        isFlagged ? "Submission flagged for review" : "Submission approved",
+        "success"
+      );
+      handleCloseModal();
       fetchData();
     } catch (error) {
-      alert("Error reviewing submission: " + error.message);
+      showToast("Error reviewing submission: " + error.message, "error");
     }
   };
 
-  // Handle per-question manual grade override
+  // ── Per-question manual grade override ─────────────────────────
+  const startQuestionOverride = (questionId, currentMarks) => {
+    setEditingQuestionId(questionId);
+    setEditMarks(String(currentMarks || 0));
+    setOverrideReason("");
+  };
+
+  const cancelQuestionOverride = () => {
+    setEditingQuestionId(null);
+    setEditMarks("");
+    setOverrideReason("");
+  };
+
   const handleOverrideGrade = async (questionId, maxPoints) => {
     const marks = parseFloat(editMarks);
     if (isNaN(marks) || marks < 0 || marks > maxPoints) {
-      alert(`Please enter a valid score between 0 and ${maxPoints}`);
+      showToast(`Enter a valid score between 0 and ${maxPoints}`, "error");
       return;
     }
 
@@ -93,54 +151,80 @@ const ExamSubmissions = () => {
         questionId,
         marks
       );
-      // Refresh submission details
-      const data = await examService.getSubmission(token, selectedSubmission._id);
-      setSelectedSubmission(data.submission);
-      setEditingQuestionId(null);
-      setEditMarks("");
-      fetchData(); // Refresh table stats too
+      showToast(`Grade updated to ${marks}/${maxPoints}`, "success");
+      cancelQuestionOverride();
+      await refreshSubmissionDetail(selectedSubmission._id);
+      fetchData();
     } catch (error) {
-      alert("Error overriding grade: " + (error.response?.data?.message || error.message));
+      showToast(
+        "Error overriding grade: " +
+          (error.response?.data?.message || error.message),
+        "error"
+      );
     } finally {
       setOverrideLoading(false);
     }
   };
 
-  // Handle total score override
+  // ── Total score override ───────────────────────────────────────
+  const startTotalScoreOverride = () => {
+    setEditingTotalScore(true);
+    setEditTotalMarks(String(selectedSubmission.score));
+    setTotalOverrideReason("");
+  };
+
+  const cancelTotalScoreOverride = () => {
+    setEditingTotalScore(false);
+    setEditTotalMarks("");
+    setTotalOverrideReason("");
+  };
+
   const handleOverrideTotalScore = async () => {
     const newScore = parseFloat(editTotalMarks);
-    if (isNaN(newScore) || newScore < 0 || newScore > selectedSubmission.maxScore) {
-      alert(`Please enter a valid score between 0 and ${selectedSubmission.maxScore}`);
+    if (
+      isNaN(newScore) ||
+      newScore < 0 ||
+      newScore > selectedSubmission.maxScore
+    ) {
+      showToast(
+        `Enter a valid score between 0 and ${selectedSubmission.maxScore}`,
+        "error"
+      );
       return;
     }
 
     setOverrideLoading(true);
     try {
       const token = await getAuthToken();
-      await examService.overrideTotalScore(token, selectedSubmission._id, newScore);
-      // Refresh submission details
-      const data = await examService.getSubmission(token, selectedSubmission._id);
-      setSelectedSubmission(data.submission);
-      setEditingTotalScore(false);
-      setEditTotalMarks("");
+      await examService.overrideTotalScore(
+        token,
+        selectedSubmission._id,
+        newScore,
+        totalOverrideReason || undefined
+      );
+      showToast(
+        `Total score updated to ${newScore}/${selectedSubmission.maxScore}`,
+        "success"
+      );
+      cancelTotalScoreOverride();
+      await refreshSubmissionDetail(selectedSubmission._id);
       fetchData();
     } catch (error) {
-      alert("Error overriding total score: " + (error.response?.data?.message || error.message));
+      showToast(
+        "Error overriding total score: " +
+          (error.response?.data?.message || error.message),
+        "error"
+      );
     } finally {
       setOverrideLoading(false);
     }
   };
 
+  // ── Helpers ────────────────────────────────────────────────────
   const filteredSubmissions = submissions.filter((s) => {
     if (filterStatus === "all") return true;
     if (filterStatus === "flagged") return s.isFlagged;
-    if (filterStatus === "submitted") return s.status === "submitted";
-    if (filterStatus === "in_progress") return s.status === "in_progress";
-    if (filterStatus === "grading") return s.status === "grading";
-    if (filterStatus === "graded") return s.status === "graded";
-    if (filterStatus === "partially_graded") return s.status === "partially_graded";
-    if (filterStatus === "locked") return s.status === "locked";
-    return true;
+    return s.status === filterStatus;
   });
 
   const getStatusClass = (submission) => {
@@ -157,7 +241,7 @@ const ExamSubmissions = () => {
     const labels = {
       in_progress: "In Progress",
       submitted: "Submitted",
-      grading: "AI Grading...",
+      grading: "AI Grading…",
       graded: "Graded",
       partially_graded: "Needs Review",
       locked: "Locked",
@@ -165,25 +249,53 @@ const ExamSubmissions = () => {
     return labels[status] || status;
   };
 
+  /** Determine answer correctness from backend fields, not raw string match */
+  const getAnswerStatus = (answer, question) => {
+    if (!answer) return { isCorrect: false, awarded: 0 };
+    // Trust the backend isCorrect and marksAwarded over client string matching
+    return {
+      isCorrect: answer.isCorrect || answer.marksAwarded > 0,
+      awarded: answer.marksAwarded || 0,
+    };
+  };
+
+  // ── Render ─────────────────────────────────────────────────────
   if (loading) {
-    return <div className="loading">Loading submissions...</div>;
+    return (
+      <div className="loading">
+        <div className="loading-spinner" />
+        Loading submissions…
+      </div>
+    );
   }
 
   return (
     <div className="submissions-page exam-submissions">
+      {/* Toast notification */}
+      {toast && (
+        <div className={`toast-notification toast-${toast.type}`}>
+          <span className="toast-icon">
+            {toast.type === "success" ? "✓" : "✕"}
+          </span>
+          {toast.message}
+        </div>
+      )}
+
+      {/* ── Header ── */}
       <div className="submissions-header">
         <div>
-          <h1>{exam?.title} - Submissions</h1>
+          <h1>{exam?.title} — Submissions</h1>
           <p className="exam-info">
-            Duration: {exam?.duration} min | Questions:{" "}
+            Duration: {exam?.duration} min &nbsp;|&nbsp; Questions:{" "}
             {exam?.questions?.length}
           </p>
         </div>
         <button onClick={() => navigate("/dashboard")} className="btn-back">
-          Back to Dashboard
+          ← Back to Dashboard
         </button>
       </div>
 
+      {/* ── Stats Bar ── */}
       {stats && (
         <div className="stats-bar">
           <div className="stat">
@@ -217,6 +329,7 @@ const ExamSubmissions = () => {
         </div>
       )}
 
+      {/* ── Filter ── */}
       <div className="filter-bar">
         <label>Filter: </label>
         <select
@@ -248,11 +361,13 @@ const ExamSubmissions = () => {
             Flagged ({submissions.filter((s) => s.isFlagged).length})
           </option>
           <option value="locked">
-            Locked ({submissions.filter((s) => s.status === "locked").length})
+            Locked (
+            {submissions.filter((s) => s.status === "locked").length})
           </option>
         </select>
       </div>
 
+      {/* ── Submissions Table ── */}
       <div className="submissions-content">
         {filteredSubmissions.length === 0 ? (
           <div className="no-data">
@@ -293,15 +408,21 @@ const ExamSubmissions = () => {
                       <span
                         className={`status-badge ${submission.status} ${submission.isFlagged ? "flagged" : ""}`}
                       >
-                        {submission.status === "locked" ? "Locked " : submission.isFlagged ? "[!] " : ""}
+                        {submission.status === "locked"
+                          ? "🔒 "
+                          : submission.isFlagged
+                            ? "⚠ "
+                            : ""}
                         {getStatusLabel(submission.status)}
                       </span>
                     </td>
                     <td>
                       {submission.status === "grading" ? (
-                        <span className="score" style={{ color: '#ff9800' }}>AI Grading...</span>
+                        <span className="score grading-score">
+                          AI Grading…
+                        </span>
                       ) : submission.status === "partially_graded" ? (
-                        <span className="score" style={{ color: '#f57c00' }}>
+                        <span className="score partial-score">
                           {submission.score}/{submission.maxScore} (Partial)
                         </span>
                       ) : (
@@ -314,7 +435,9 @@ const ExamSubmissions = () => {
                       )}
                     </td>
                     <td
-                      className={submission.tabSwitchCount > 3 ? "warning" : ""}
+                      className={
+                        submission.tabSwitchCount > 3 ? "warning" : ""
+                      }
                     >
                       {submission.tabSwitchCount}
                     </td>
@@ -342,7 +465,7 @@ const ExamSubmissions = () => {
                         onClick={() => handleViewSubmission(submission)}
                         className="btn-view"
                       >
-                        View
+                        View Details
                       </button>
                     </td>
                   </tr>
@@ -353,165 +476,213 @@ const ExamSubmissions = () => {
         )}
       </div>
 
-      {/* Submission Detail Modal */}
+      {/* ═══════════════════════════════════════════════════════════════
+          SUBMISSION DETAIL MODAL
+          ═══════════════════════════════════════════════════════════════ */}
       {selectedSubmission && (
-        <div
-          className="modal-overlay"
-          onClick={() => setSelectedSubmission(null)}
-        >
+        <div className="modal-overlay" onClick={handleCloseModal}>
           <div
             className="modal-content submission-detail"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Modal Header */}
             <div className="modal-header">
-              <h2>Submission Details</h2>
-              <button
-                onClick={() => setSelectedSubmission(null)}
-                className="btn-close"
-              >
-                x
+              <div className="modal-header-left">
+                <h2>
+                  {selectedSubmission.studentId?.name || "Unknown Student"}
+                </h2>
+                <span className="modal-subtitle">
+                  {selectedSubmission.studentId?.email} &nbsp;·&nbsp;{" "}
+                  <span
+                    className={`status-badge-inline ${selectedSubmission.status}`}
+                  >
+                    {getStatusLabel(selectedSubmission.status)}
+                  </span>
+                </span>
+              </div>
+              <button onClick={handleCloseModal} className="btn-close">
+                ✕
               </button>
             </div>
 
             <div className="modal-body">
-              <div className="submission-meta">
-                <div className="meta-item">
-                  <label>Student</label>
-                  <span>{selectedSubmission.studentId?.name || "Unknown"}</span>
-                </div>
-                <div className="meta-item">
-                  <label>Email</label>
-                  <span>{selectedSubmission.studentId?.email || "N/A"}</span>
-                </div>
-                <div className="meta-item">
-                  <label>Score</label>
+              {/* ── Score Overview Card ── */}
+              <div className="score-overview-card">
+                <div className="score-overview-main">
                   {editingTotalScore ? (
-                    <div className="inline-override-editor">
-                      <input
-                        type="number"
-                        className="override-input"
-                        value={editTotalMarks}
-                        onChange={(e) => setEditTotalMarks(e.target.value)}
-                        min={0}
-                        max={selectedSubmission.maxScore}
-                        step="0.5"
-                        autoFocus
-                        placeholder={`0 – ${selectedSubmission.maxScore}`}
-                      />
-                      <span className="override-max">/ {selectedSubmission.maxScore}</span>
-                      <button
-                        className="btn-override-save"
-                        onClick={handleOverrideTotalScore}
-                        disabled={overrideLoading}
-                      >
-                        {overrideLoading ? "…" : "✓"}
-                      </button>
-                      <button
-                        className="btn-override-cancel"
-                        onClick={() => { setEditingTotalScore(false); setEditTotalMarks(""); }}
-                        disabled={overrideLoading}
-                      >
-                        ✕
-                      </button>
+                    <div className="total-score-editor">
+                      <div className="editor-row">
+                        <label>New Total Score</label>
+                        <div className="editor-input-group">
+                          <input
+                            type="number"
+                            className="override-input large"
+                            value={editTotalMarks}
+                            onChange={(e) => setEditTotalMarks(e.target.value)}
+                            min={0}
+                            max={selectedSubmission.maxScore}
+                            step="0.5"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleOverrideTotalScore();
+                              if (e.key === "Escape") cancelTotalScoreOverride();
+                            }}
+                          />
+                          <span className="override-max-label">
+                            / {selectedSubmission.maxScore}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="editor-row">
+                        <label>Reason (optional)</label>
+                        <input
+                          type="text"
+                          className="override-reason-input"
+                          value={totalOverrideReason}
+                          onChange={(e) =>
+                            setTotalOverrideReason(e.target.value)
+                          }
+                          placeholder="e.g. Corrected marking error"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleOverrideTotalScore();
+                          }}
+                        />
+                      </div>
+                      <div className="editor-actions">
+                        <button
+                          className="btn-save"
+                          onClick={handleOverrideTotalScore}
+                          disabled={overrideLoading}
+                        >
+                          {overrideLoading ? "Saving…" : "Save Score"}
+                        </button>
+                        <button
+                          className="btn-cancel"
+                          onClick={cancelTotalScoreOverride}
+                          disabled={overrideLoading}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="score-with-override">
-                      <span
-                        className={`score-display ${selectedSubmission.percentage >= 50 ? "pass" : "fail"}`}
-                      >
-                        {selectedSubmission.score}/{selectedSubmission.maxScore} (
-                        {selectedSubmission.percentage}%)
-                      </span>
+                    <>
+                      <div className="score-big">
+                        <span
+                          className={`score-number ${selectedSubmission.percentage >= 50 ? "pass" : "fail"}`}
+                        >
+                          {selectedSubmission.score}
+                        </span>
+                        <span className="score-separator">/</span>
+                        <span className="score-max">
+                          {selectedSubmission.maxScore}
+                        </span>
+                      </div>
+                      <div className="score-percentage">
+                        <div
+                          className={`percentage-ring ${selectedSubmission.percentage >= 50 ? "pass" : "fail"}`}
+                        >
+                          {selectedSubmission.percentage}%
+                        </div>
+                      </div>
                       <button
                         className="btn-override-total"
-                        onClick={() => {
-                          setEditingTotalScore(true);
-                          setEditTotalMarks(String(selectedSubmission.score));
-                        }}
+                        onClick={startTotalScoreOverride}
                         title="Override total score"
                       >
-                        ✎
+                        ✎ Override Score
                       </button>
-                    </div>
+                    </>
                   )}
                 </div>
-                <div className="meta-item">
-                  <label>Status</label>
-                  <span className={`status-badge ${selectedSubmission.status}`}>
-                    {selectedSubmission.status}
-                  </span>
-                </div>
-                <div className="meta-item">
-                  <label>Tab Switches</label>
-                  <span
-                    className={
-                      selectedSubmission.tabSwitchCount > 3
-                        ? "warning-text"
-                        : ""
-                    }
-                  >
-                    {selectedSubmission.tabSwitchCount}
-                  </span>
-                </div>
-                <div className="meta-item">
-                  <label>Fullscreen Exits</label>
-                  <span
-                    className={
-                      selectedSubmission.fullscreenExitCount > 2
-                        ? "warning-text"
-                        : ""
-                    }
-                  >
-                    {selectedSubmission.fullscreenExitCount}
-                  </span>
-                </div>
-                <div className="meta-item">
-                  <label>Trust Score</label>
-                  <span
-                    className={`trust-badge ${(selectedSubmission.proctoringScore || 100) < 50 ? "low" : (selectedSubmission.proctoringScore || 100) < 75 ? "medium" : "high"}`}
-                  >
-                    {selectedSubmission.proctoringScore || 100}%
-                  </span>
-                </div>
-                <div className="meta-item">
-                  <label>Submitted At</label>
-                  <span>
-                    {selectedSubmission.submittedAt
-                      ? new Date(
-                          selectedSubmission.submittedAt,
-                        ).toLocaleString()
-                      : "Not submitted"}
-                  </span>
+
+                <div className="score-overview-meta">
+                  <div className="meta-chip">
+                    <span className="meta-chip-label">Tab Switches</span>
+                    <span
+                      className={`meta-chip-value ${selectedSubmission.tabSwitchCount > 3 ? "warning" : ""}`}
+                    >
+                      {selectedSubmission.tabSwitchCount}
+                    </span>
+                  </div>
+                  <div className="meta-chip">
+                    <span className="meta-chip-label">FS Exits</span>
+                    <span
+                      className={`meta-chip-value ${selectedSubmission.fullscreenExitCount > 2 ? "warning" : ""}`}
+                    >
+                      {selectedSubmission.fullscreenExitCount}
+                    </span>
+                  </div>
+                  <div className="meta-chip">
+                    <span className="meta-chip-label">Trust Score</span>
+                    <span
+                      className={`meta-chip-value trust ${(selectedSubmission.proctoringScore || 100) < 50 ? "low" : (selectedSubmission.proctoringScore || 100) < 75 ? "medium" : "high"}`}
+                    >
+                      {selectedSubmission.proctoringScore || 100}%
+                    </span>
+                  </div>
+                  <div className="meta-chip">
+                    <span className="meta-chip-label">Submitted</span>
+                    <span className="meta-chip-value">
+                      {selectedSubmission.submittedAt
+                        ? new Date(
+                            selectedSubmission.submittedAt
+                          ).toLocaleString()
+                        : "—"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
+              {/* ── Answers Section ── */}
               <div className="answers-section">
-                <h3>Answers</h3>
+                <h3>
+                  Answers &amp; Grading
+                  <span className="answers-count">
+                    {exam?.questions?.length} question
+                    {exam?.questions?.length !== 1 ? "s" : ""}
+                  </span>
+                </h3>
                 <div className="answers-list">
                   {exam?.questions?.map((question, index) => {
                     const answer = selectedSubmission.answers?.find(
-                      (a) => a.questionId === question._id,
+                      (a) => a.questionId === question._id
                     );
-                    const isCorrect =
-                      answer?.answer?.toLowerCase().trim() ===
-                      question.correctAnswer?.toLowerCase().trim();
+                    const { isCorrect, awarded } = getAnswerStatus(
+                      answer,
+                      question
+                    );
+                    const isEditing = editingQuestionId === question._id;
 
                     return (
                       <div
                         key={question._id}
-                        className={`answer-card ${isCorrect ? "correct" : "incorrect"}`}
+                        className={`answer-card ${isCorrect ? "correct" : "incorrect"} ${isEditing ? "editing" : ""}`}
                       >
+                        {/* Question Header */}
                         <div className="question-header">
-                          <span className="question-number">Q{index + 1}</span>
-                          <span
-                            className={`result-badge ${isCorrect ? "correct" : "incorrect"}`}
-                          >
-                            {isCorrect ? "Correct" : "Incorrect"} (
-                            {question.points} pt
-                            {question.points !== 1 ? "s" : ""})
-                          </span>
+                          <div className="question-header-left">
+                            <span className="question-number">
+                              Q{index + 1}
+                            </span>
+                            <span className="question-type-badge">
+                              {question.type?.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                          <div className="question-header-right">
+                            <span
+                              className={`marks-badge ${isCorrect ? "correct" : "incorrect"}`}
+                            >
+                              {awarded}/{question.points} pt
+                              {question.points !== 1 ? "s" : ""}
+                            </span>
+                          </div>
                         </div>
+
+                        {/* Question Text */}
                         <p className="question-text">{question.question}</p>
+
+                        {/* Answer Comparison */}
                         <div className="answer-comparison">
                           <div className="answer-box student-answer">
                             <label>Student's Answer</label>
@@ -522,76 +693,131 @@ const ExamSubmissions = () => {
                             </span>
                           </div>
                           <div className="answer-box correct-answer-box">
-                            <label>Correct Answer / Model Answer</label>
+                            <label>Correct / Model Answer</label>
                             <span className="answer-value">
-                              {question.modelAnswer || question.correctAnswer}
+                              {question.modelAnswer ||
+                                question.correctAnswer}
                             </span>
                           </div>
                         </div>
 
-                        {/* Grading Info */}
+                        {/* Grading Method Info */}
                         <div className="grading-info">
                           {answer?.gradingMethod === "slm_semantic" && (
-                            <div className="slm-metrics">
-                              <strong>🤖 AI Semantic Grading:</strong> {answer.gradingStatus === "graded" ? "Evaluated" : "Pending / Timeout"}<br/>
-                              <strong>Similarity Score:</strong> {answer.slmScore !== null ? (answer.slmScore * 100).toFixed(0) + "%" : "N/A"}<br/>
-                              <strong>Marks Awarded:</strong> {answer.marksAwarded} / {question.points}
+                            <div className="grading-badge slm">
+                              <span className="grading-badge-icon">🤖</span>
+                              <div className="grading-badge-content">
+                                <strong>AI Semantic Grading</strong>
+                                <span>
+                                  {answer.gradingStatus === "graded"
+                                    ? "Evaluated"
+                                    : "Pending"}{" "}
+                                  &nbsp;·&nbsp; Similarity:{" "}
+                                  {answer.slmScore !== null
+                                    ? (answer.slmScore * 100).toFixed(0) + "%"
+                                    : "N/A"}{" "}
+                                  &nbsp;·&nbsp; {answer.marksAwarded}/
+                                  {question.points}
+                                </span>
+                              </div>
                             </div>
                           )}
                           {answer?.gradingMethod === "manual" && (
-                            <div className="manual-grading-badge">
-                              ✎ Manually graded — {answer.marksAwarded} / {question.points}
+                            <div className="grading-badge manual">
+                              <span className="grading-badge-icon">✎</span>
+                              <div className="grading-badge-content">
+                                <strong>Manually Graded</strong>
+                                <span>
+                                  Teacher override — {answer.marksAwarded}/
+                                  {question.points}
+                                </span>
+                              </div>
                             </div>
                           )}
                           {answer?.gradingMethod === "exact_match" && (
-                            <div className="auto-grading-badge">
-                              ⚡ Auto-graded — {answer.marksAwarded} / {question.points}
+                            <div className="grading-badge auto">
+                              <span className="grading-badge-icon">⚡</span>
+                              <div className="grading-badge-content">
+                                <strong>Auto-Graded</strong>
+                                <span>
+                                  Exact match — {answer.marksAwarded}/
+                                  {question.points}
+                                </span>
+                              </div>
                             </div>
                           )}
                         </div>
 
-                        {/* Manual Override Controls */}
-                        <div className="override-action">
-                          {editingQuestionId === question._id ? (
-                            <div className="inline-override-editor">
-                              <label className="override-label">Set marks:</label>
-                              <input
-                                type="number"
-                                className="override-input"
-                                value={editMarks}
-                                onChange={(e) => setEditMarks(e.target.value)}
-                                min={0}
-                                max={question.points}
-                                step="0.5"
-                                autoFocus
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") handleOverrideGrade(question._id, question.points);
-                                  if (e.key === "Escape") { setEditingQuestionId(null); setEditMarks(""); }
-                                }}
-                              />
-                              <span className="override-max">/ {question.points}</span>
-                              <button
-                                className="btn-override-save"
-                                onClick={() => handleOverrideGrade(question._id, question.points)}
-                                disabled={overrideLoading}
-                              >
-                                {overrideLoading ? "Saving…" : "Save"}
-                              </button>
-                              <button
-                                className="btn-override-cancel"
-                                onClick={() => { setEditingQuestionId(null); setEditMarks(""); }}
-                                disabled={overrideLoading}
-                              >
-                                Cancel
-                              </button>
+                        {/* Override Controls */}
+                        <div className="override-section">
+                          {isEditing ? (
+                            <div className="override-editor">
+                              <div className="override-editor-row">
+                                <label>New Score</label>
+                                <div className="override-input-group">
+                                  <input
+                                    type="number"
+                                    className="override-input"
+                                    value={editMarks}
+                                    onChange={(e) =>
+                                      setEditMarks(e.target.value)
+                                    }
+                                    min={0}
+                                    max={question.points}
+                                    step="0.5"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter")
+                                        handleOverrideGrade(
+                                          question._id,
+                                          question.points
+                                        );
+                                      if (e.key === "Escape")
+                                        cancelQuestionOverride();
+                                    }}
+                                  />
+                                  <span className="override-max-label">
+                                    / {question.points}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="override-editor-actions">
+                                <button
+                                  className="btn-save"
+                                  onClick={() =>
+                                    handleOverrideGrade(
+                                      question._id,
+                                      question.points
+                                    )
+                                  }
+                                  disabled={overrideLoading}
+                                >
+                                  {overrideLoading ? (
+                                    <>
+                                      <span className="btn-spinner" /> Saving…
+                                    </>
+                                  ) : (
+                                    "Save"
+                                  )}
+                                </button>
+                                <button
+                                  className="btn-cancel"
+                                  onClick={cancelQuestionOverride}
+                                  disabled={overrideLoading}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
                             </div>
                           ) : (
                             <button
                               className="btn-override"
-                              onClick={() => {
-                                setEditingQuestionId(question._id);
-                                setEditMarks(String(answer?.marksAwarded || 0));
-                              }}
+                              onClick={() =>
+                                startQuestionOverride(
+                                  question._id,
+                                  answer?.marksAwarded
+                                )
+                              }
                             >
                               ✎ Override Grade
                             </button>
@@ -603,6 +829,7 @@ const ExamSubmissions = () => {
                 </div>
               </div>
 
+              {/* ── Proctoring Events ── */}
               {selectedSubmission.proctoringEvents?.length > 0 && (
                 <div className="events-section">
                   <h3>
@@ -630,66 +857,87 @@ const ExamSubmissions = () => {
                 </div>
               )}
 
+              {/* ── Review Section ── */}
               <div className="review-section">
-                <h3>Review Notes</h3>
+                <h3>Teacher Review</h3>
                 <textarea
                   value={reviewNotes}
                   onChange={(e) => setReviewNotes(e.target.value)}
-                  placeholder="Add review notes..."
+                  placeholder="Add review notes for this submission…"
                   rows={3}
                 />
                 {selectedSubmission.reviewedBy && (
                   <p className="reviewed-info">
-                    Reviewed by {selectedSubmission.reviewedBy.name} on{" "}
+                    Last reviewed by {selectedSubmission.reviewedBy.name} on{" "}
                     {new Date(selectedSubmission.reviewedAt).toLocaleString()}
                   </p>
                 )}
+
+                {/* Lock Info */}
+                {selectedSubmission.status === "locked" && (
+                  <div className="lock-info-section">
+                    <h4 className="lock-info-title">
+                      🔒 This exam was auto-locked
+                    </h4>
+                    <p className="lock-info-reason">
+                      <strong>Reason:</strong>{" "}
+                      {selectedSubmission.lockInfo?.lockReason ||
+                        "Max violations reached"}
+                    </p>
+                    <p className="lock-info-time">
+                      <strong>Locked at:</strong>{" "}
+                      {selectedSubmission.lockInfo?.lockedAt
+                        ? new Date(
+                            selectedSubmission.lockInfo.lockedAt
+                          ).toLocaleString()
+                        : "Unknown"}
+                    </p>
+                    <button
+                      onClick={async () => {
+                        if (
+                          !window.confirm(
+                            "Unlock this submission? It will move to 'submitted' status for grading."
+                          )
+                        )
+                          return;
+                        try {
+                          const token = await getAuthToken();
+                          await examService.unlockSubmission(
+                            token,
+                            selectedSubmission._id
+                          );
+                          showToast("Submission unlocked", "success");
+                          await refreshSubmissionDetail(selectedSubmission._id);
+                          fetchData();
+                        } catch (error) {
+                          showToast(
+                            "Error unlocking: " +
+                              (error.response?.data?.message || error.message),
+                            "error"
+                          );
+                        }
+                      }}
+                      className="btn-unlock"
+                    >
+                      🔓 Unlock Submission
+                    </button>
+                  </div>
+                )}
+
                 <div className="review-actions">
-                  {selectedSubmission.status === "locked" && (
-                    <div className="lock-info-section">
-                      <h4 className="lock-info-title">🔒 This exam was auto-locked</h4>
-                      <p className="lock-info-reason">
-                        <strong>Reason:</strong> {selectedSubmission.lockInfo?.lockReason || "Max violations reached"}
-                      </p>
-                      <p className="lock-info-time">
-                        <strong>Locked at:</strong>{" "}
-                        {selectedSubmission.lockInfo?.lockedAt
-                          ? new Date(selectedSubmission.lockInfo.lockedAt).toLocaleString()
-                          : "Unknown"}
-                      </p>
-                      <button
-                        onClick={async () => {
-                          if (!window.confirm("Are you sure you want to unlock this submission? It will be moved to 'submitted' status for grading."))
-                            return;
-                          try {
-                            const token = await getAuthToken();
-                            await examService.unlockSubmission(token, selectedSubmission._id);
-                            alert("Submission unlocked successfully. You can now grade it.");
-                            setSelectedSubmission(null);
-                            fetchData();
-                          } catch (error) {
-                            alert("Error unlocking submission: " + (error.response?.data?.message || error.message));
-                          }
-                        }}
-                        className="btn-unlock"
-                      >
-                        🔓 Unlock Submission
-                      </button>
-                    </div>
-                  )}
                   <button
                     onClick={() => handleReviewSubmission(false)}
                     className="btn-approve"
                     disabled={selectedSubmission.status === "locked"}
                   >
-                    Approve
+                    ✓ Approve
                   </button>
                   <button
                     onClick={() => handleReviewSubmission(true)}
                     className="btn-flag"
                     disabled={selectedSubmission.status === "locked"}
                   >
-                    Flag for Review
+                    ⚠ Flag for Review
                   </button>
                 </div>
               </div>

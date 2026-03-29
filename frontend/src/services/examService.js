@@ -138,10 +138,10 @@ export const examService = {
   },
 
   // Override total submission score directly (Teacher/Admin)
-  overrideTotalScore: async (token, submissionId, newScore) => {
+  overrideTotalScore: async (token, submissionId, newScore, reason) => {
     const response = await api.put(
-      `/submissions/${submissionId}/review`,
-      { score: newScore },
+      `/grading/${submissionId}/override-total`,
+      { score: newScore, reason },
       authHeader(token),
     );
     return response.data;
