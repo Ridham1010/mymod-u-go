@@ -87,7 +87,7 @@ router.get("/:submissionId/status", verifyFirebaseToken, async (req, res) => {
  * PUT /api/grading/:submissionId/override
  * Teacher manually overrides score for specific answers.
  *
- * Body: { overrides: [{ questionId, marksAwarded, reviewNotes }] }
+ * Body: { overrides: [{ questionId, marksAwarded, reason }] }
  */
 router.put("/:submissionId/override", verifyFirebaseToken, async (req, res) => {
   try {
@@ -97,7 +97,7 @@ router.put("/:submissionId/override", verifyFirebaseToken, async (req, res) => {
     }
 
     const { overrides } = req.body;
-    if (!overrides || !Array.isArray(overrides)) {
+    if (!overrides || !Array.isArray(overrides) || overrides.length === 0) {
       return res.status(400).json({ message: "overrides array is required" });
     }
 
@@ -116,20 +116,53 @@ router.put("/:submissionId/override", verifyFirebaseToken, async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    // Apply overrides
-    let totalScore = 0;
-    for (const answer of submission.answers) {
-      const override = overrides.find(
-        (o) => o.questionId === answer.questionId.toString()
-      );
-
-      if (override) {
-        answer.marksAwarded = override.marksAwarded;
-        answer.gradingStatus = "graded";
-        answer.gradingMethod = "manual";
-        answer.updatedAt = new Date();
+    // Validate and apply overrides
+    const errors = [];
+    for (const override of overrides) {
+      if (!override.questionId) {
+        errors.push("Missing questionId in override");
+        continue;
       }
 
+      const answer = submission.answers.find(
+        (a) => a.questionId.toString() === override.questionId
+      );
+
+      if (!answer) {
+        errors.push(`Answer not found for question ${override.questionId}`);
+        continue;
+      }
+
+      // Find the question to validate against max points
+      const question = submission.examId.questions.id(override.questionId);
+      const maxPoints = question ? question.points : Infinity;
+
+      const marks = parseFloat(override.marksAwarded);
+      if (isNaN(marks) || marks < 0) {
+        errors.push(`Invalid marks for question ${override.questionId}: must be >= 0`);
+        continue;
+      }
+      if (marks > maxPoints) {
+        errors.push(`Marks (${marks}) exceed maximum (${maxPoints}) for question ${override.questionId}`);
+        continue;
+      }
+
+      // Apply override
+      answer.marksAwarded = marks;
+      answer.gradingStatus = "graded";
+      answer.gradingMethod = "manual";
+      answer.isCorrect = marks > 0;
+      answer.updatedAt = new Date();
+    }
+
+    if (errors.length > 0 && errors.length === overrides.length) {
+      // All overrides failed
+      return res.status(400).json({ message: "All overrides failed", errors });
+    }
+
+    // Recalculate total score from all answers
+    let totalScore = 0;
+    for (const answer of submission.answers) {
       totalScore += answer.marksAwarded || 0;
     }
 
@@ -154,17 +187,101 @@ router.put("/:submissionId/override", verifyFirebaseToken, async (req, res) => {
       userId: submission.studentId,
       type: "exam_graded",
       title: "Score Updated",
-      message: `Your score for "${submission.examId.title}" has been manually reviewed`,
-      data: { submissionId: submission._id },
+      message: `Your score for "${submission.examId.title}" has been manually reviewed by your teacher`,
+      data: { submissionId: submission._id, examId: submission.examId._id },
       priority: "medium",
     });
 
     res.json({
       submission,
-      message: "Scores overridden successfully",
+      message: errors.length > 0
+        ? `Overrides applied with ${errors.length} warning(s)`
+        : "Scores overridden successfully",
+      warnings: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {
     console.error("Error overriding scores:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+/**
+ * PUT /api/grading/:submissionId/override-total
+ * Teacher directly overrides the total score for a submission.
+ *
+ * Body: { score, reason }
+ */
+router.put("/:submissionId/override-total", verifyFirebaseToken, async (req, res) => {
+  try {
+    const user = await User.findOne({ firebaseUid: req.user.uid });
+    if (!user || !["teacher", "admin"].includes(user.role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const { score, reason } = req.body;
+
+    if (score === undefined || score === null) {
+      return res.status(400).json({ message: "score is required" });
+    }
+
+    const numScore = parseFloat(score);
+    if (isNaN(numScore) || numScore < 0) {
+      return res.status(400).json({ message: "score must be a non-negative number" });
+    }
+
+    const submission = await Submission.findById(req.params.submissionId)
+      .populate("examId");
+
+    if (!submission) {
+      return res.status(404).json({ message: "Submission not found" });
+    }
+
+    // Teacher can only override scores for their own exam
+    if (
+      user.role === "teacher" &&
+      submission.examId.teacherId.toString() !== user._id.toString()
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    if (numScore > submission.maxScore) {
+      return res.status(400).json({
+        message: `Score (${numScore}) exceeds maximum (${submission.maxScore})`,
+      });
+    }
+
+    submission.score = numScore;
+    submission.reviewedBy = user._id;
+    submission.reviewedAt = new Date();
+    if (reason) {
+      submission.reviewNotes = (submission.reviewNotes || "") +
+        `\n[Override ${new Date().toLocaleDateString()}]: Total score set to ${numScore}/${submission.maxScore}. Reason: ${reason}`;
+    }
+
+    // Mark as graded since teacher has manually set the score
+    if (submission.status !== "locked") {
+      submission.status = "graded";
+      submission.gradingCompletedAt = new Date();
+    }
+
+    await submission.save();
+
+    // Notify student
+    await Notification.create({
+      userId: submission.studentId,
+      type: "exam_graded",
+      title: "Score Updated",
+      message: `Your total score for "${submission.examId.title}" has been updated by your teacher`,
+      data: { submissionId: submission._id, examId: submission.examId._id },
+      priority: "medium",
+    });
+
+    res.json({
+      submission,
+      message: "Total score overridden successfully",
+    });
+  } catch (error) {
+    console.error("Error overriding total score:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
