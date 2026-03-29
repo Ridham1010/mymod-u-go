@@ -355,28 +355,28 @@ router.get("/exam/:examId", verifyFirebaseToken, async (req, res) => {
       .sort({ submittedAt: -1 });
 
     // Calculate statistics
-    const submittedSubmissions = submissions.filter(
-      (s) => s.status === "submitted",
+    const scoredSubmissions = submissions.filter(
+      (s) => ["submitted", "graded", "partially_graded"].includes(s.status),
     );
     const stats = {
       total: submissions.length,
-      submitted: submittedSubmissions.length,
+      submitted: submissions.filter((s) => s.status === "submitted").length,
       inProgress: submissions.filter((s) => s.status === "in_progress").length,
       flagged: submissions.filter((s) => s.isFlagged).length,
       averageScore:
-        submittedSubmissions.length > 0
+        scoredSubmissions.length > 0
           ? Math.round(
-              submittedSubmissions.reduce((sum, s) => sum + s.percentage, 0) /
-                submittedSubmissions.length,
+              scoredSubmissions.reduce((sum, s) => sum + s.percentage, 0) /
+                scoredSubmissions.length,
             )
           : 0,
       highestScore:
-        submittedSubmissions.length > 0
-          ? Math.max(...submittedSubmissions.map((s) => s.percentage))
+        scoredSubmissions.length > 0
+          ? Math.max(...scoredSubmissions.map((s) => s.percentage))
           : 0,
       lowestScore:
-        submittedSubmissions.length > 0
-          ? Math.min(...submittedSubmissions.map((s) => s.percentage))
+        scoredSubmissions.length > 0
+          ? Math.min(...scoredSubmissions.map((s) => s.percentage))
           : 0,
     };
 
@@ -398,20 +398,37 @@ router.get("/my-submissions", verifyFirebaseToken, async (req, res) => {
 
     const submissions = await Submission.find({
       studentId: user._id,
-      status: { $in: ["submitted", "graded"] },
+      status: { $in: ["submitted", "grading", "graded", "partially_graded", "locked"] },
     })
-      .populate("examId", "title description duration settings")
+      .populate("examId", "title description duration settings questions")
       .sort({ submittedAt: -1 })
       .lean();
 
     // Filter out submissions with deleted exams and sanitize data
     const cleanSubmissions = submissions
       .filter((s) => s.examId != null)
-      .map((s) => ({
-        ...s,
-        percentage: isNaN(s.percentage) ? 0 : s.percentage,
-        score: isNaN(s.score) ? 0 : s.score,
-      }));
+      .map((s) => {
+        const cleaned = {
+          ...s,
+          percentage: isNaN(s.percentage) ? 0 : s.percentage,
+          score: isNaN(s.score) ? 0 : s.score,
+        };
+
+        // Strip correct answers if teacher disabled immediate results
+        if (s.examId?.settings?.showResultsImmediately === false) {
+          cleaned.examId = {
+            ...s.examId,
+            questions: s.examId.questions?.map((q) => ({
+              ...q,
+              correctAnswer: undefined,
+              modelAnswer: undefined,
+              explanation: undefined,
+            })),
+          };
+        }
+
+        return cleaned;
+      });
 
     res.json({ submissions: cleanSubmissions });
   } catch (error) {
@@ -451,6 +468,24 @@ router.get("/:id", verifyFirebaseToken, async (req, res) => {
       submission.examId.teacherId.toString() !== user._id.toString()
     ) {
       return res.status(403).json({ message: "Access denied" });
+    }
+
+    // Sanitize for students: strip correct answers if showResultsImmediately is false
+    if (user.role === "student") {
+      const submissionObj = submission.toObject();
+      if (submissionObj.examId?.settings?.showResultsImmediately === false) {
+        submissionObj.examId.questions = submissionObj.examId.questions?.map((q) => ({
+          ...q,
+          correctAnswer: undefined,
+          modelAnswer: undefined,
+          explanation: undefined,
+        }));
+      }
+      // Strip proctoring data from student view — they shouldn't see their own events
+      delete submissionObj.proctoringEvents;
+      delete submissionObj.webcamSnapshots;
+      delete submissionObj.proctoringScore;
+      return res.json({ submission: submissionObj });
     }
 
     res.json({ submission });
