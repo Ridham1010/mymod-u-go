@@ -125,6 +125,28 @@ export const examService = {
     return response.data;
   },
 
+  // Manual grade override (Teacher/Admin)
+  overrideGrade: async (token, submissionId, questionId, marksAwarded) => {
+    const response = await api.put(
+      `/grading/${submissionId}/override`,
+      {
+        overrides: [{ questionId, marksAwarded }],
+      },
+      authHeader(token),
+    );
+    return response.data;
+  },
+
+  // Override total submission score directly (Teacher/Admin)
+  overrideTotalScore: async (token, submissionId, newScore) => {
+    const response = await api.put(
+      `/submissions/${submissionId}/review`,
+      { score: newScore },
+      authHeader(token),
+    );
+    return response.data;
+  },
+
   // Notification operations
   getNotifications: async (token, page = 1, unreadOnly = false) => {
     const response = await api.get(

@@ -800,3 +800,180 @@ td.warning {
     padding: 16px;
   }
 }
+
+/* ========================================
+   MANUAL OVERRIDE UI
+   ======================================== */
+
+/* Score with override button in meta area */
+.score-with-override {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-override-total {
+  background: none;
+  border: 1px solid #d1d5db;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  transition: all 0.15s;
+}
+
+.btn-override-total:hover {
+  background: #fff7ed;
+  border-color: #f59e0b;
+  color: #d97706;
+}
+
+/* Inline override editor (used for both total and per-question) */
+.inline-override-editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.override-label {
+  font-size: 12px !important;
+  color: #6b7280 !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.override-input {
+  width: 70px;
+  padding: 5px 8px;
+  border: 2px solid #f59e0b;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s;
+  background: #fffbeb;
+}
+
+.override-input:focus {
+  border-color: #d97706;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+.override-max {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.btn-override-save {
+  padding: 5px 14px;
+  background: #2d6a4f;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.btn-override-save:hover:not(:disabled) {
+  background: #1b4332;
+}
+
+.btn-override-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-override-cancel {
+  padding: 5px 12px;
+  background: white;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.btn-override-cancel:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-override-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Per-question override button */
+.override-action {
+  margin-top: 10px;
+  text-align: right;
+}
+
+.btn-override {
+  padding: 5px 14px;
+  font-size: 12px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.2);
+}
+
+.btn-override:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Grading info badges */
+.grading-info {
+  margin-top: 10px;
+}
+
+.slm-metrics {
+  padding: 10px 14px;
+  background: #eef2f5;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  border-left: 3px solid #6366f1;
+}
+
+.manual-grading-badge {
+  padding: 8px 14px;
+  background: #fff7ed;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #92400e;
+  border-left: 3px solid #f59e0b;
+}
+
+.auto-grading-badge {
+  padding: 8px 14px;
+  background: #eff6ff;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1e40af;
+  border-left: 3px solid #3b82f6;
+}
