@@ -2,43 +2,8 @@
 
 .create-exam {
   min-height: 100vh;
-  background: #f7f8fc;
+  background: linear-gradient(135deg, #f7f8fc 0%, #f0f4f9 100%);
   padding: 24px;
-}
-
-.create-exam-header {
-  background: #fff;
-  padding: 18px 36px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  border: 1px solid #eef0f4;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.create-exam-header h1 {
-  margin: 0;
-  color: #1f2937;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.btn-back {
-  padding: 9px 20px;
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 13px;
-  transition: all 0.15s;
-}
-
-.btn-back:hover {
-  background: #e5e7eb;
 }
 
 /* ── Form layout ─────────────────────────────────────────── */

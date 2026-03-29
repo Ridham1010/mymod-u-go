@@ -111,7 +111,7 @@ const TakeExam = () => {
       console.error("Error loading exam:", error);
       alert(
         "Error loading exam: " +
-          (error.response?.data?.message || error.message),
+        (error.response?.data?.message || error.message),
       );
       navigate("/dashboard");
     } finally {
@@ -157,7 +157,7 @@ const TakeExam = () => {
         setIsLocked(true);
         setLockReason(
           submissionData.submission.lockInfo?.lockReason ||
-            "Your exam has been locked due to violations.",
+          "Your exam has been locked due to violations.",
         );
         return;
       }
@@ -178,7 +178,7 @@ const TakeExam = () => {
       console.error("Error starting exam:", error);
       alert(
         "Error starting exam: " +
-          (error.response?.data?.message || error.message),
+        (error.response?.data?.message || error.message),
       );
       navigate("/dashboard");
     } finally {
@@ -285,8 +285,8 @@ const TakeExam = () => {
         const my = (idx) => idx.reduce((s, i) => s + pts[i].y, 0) / idx.length;
 
         // Eye centers (left: 36-41, right: 42-47)
-        const leftEyeIdx  = [36,37,38,39,40,41];
-        const rightEyeIdx = [42,43,44,45,46,47];
+        const leftEyeIdx = [36, 37, 38, 39, 40, 41];
+        const rightEyeIdx = [42, 43, 44, 45, 46, 47];
         const eyeMidX = (mx(leftEyeIdx) + mx(rightEyeIdx)) / 2;
         const eyeMidY = (my(leftEyeIdx) + my(rightEyeIdx)) / 2;
 
@@ -298,17 +298,17 @@ const TakeExam = () => {
 
         // Eye Aspect Ratio – detects closed/downcast eyes
         const d = (a, b) => Math.hypot(pts[a].x - pts[b].x, pts[a].y - pts[b].y);
-        const leftEAR  = (d(37,41) + d(38,40)) / (2 * d(36,39));
-        const rightEAR = (d(43,47) + d(44,46)) / (2 * d(42,45));
+        const leftEAR = (d(37, 41) + d(38, 40)) / (2 * d(36, 39));
+        const rightEAR = (d(43, 47) + d(44, 46)) / (2 * d(42, 45));
         const avgEAR = (leftEAR + rightEAR) / 2;
 
         // Iris position ratio — detects sideways eye gaze without head turn
         // Measures where the iris sits within the eye opening (0 = left edge, 1 = right edge)
         // Left eye: inner corner = 39, outer corner = 36
-        const leftIrisX  = mx([37,38]); // top lid midpoints approximate iris center
-        const leftIrisRatio  = (leftIrisX - pts[36].x) / (pts[39].x - pts[36].x || 1);
+        const leftIrisX = mx([37, 38]); // top lid midpoints approximate iris center
+        const leftIrisRatio = (leftIrisX - pts[36].x) / (pts[39].x - pts[36].x || 1);
         // Right eye: inner corner = 42, outer corner = 45
-        const rightIrisX = mx([43,44]);
+        const rightIrisX = mx([43, 44]);
         const rightIrisRatio = (rightIrisX - pts[42].x) / (pts[45].x - pts[42].x || 1);
         const avgIrisRatio = (leftIrisRatio + rightIrisRatio) / 2;
         // Centered ≈ 0.5; looking left < 0.35; looking right > 0.65
@@ -317,11 +317,11 @@ const TakeExam = () => {
         if (headTurnRatioH > 0.10) {
           setFaceStatus("looking_away");
           if (canLog("suspicious_movement", 20000))
-            logProctoringEvent("suspicious_movement", "medium", `Head turned horizontally (${Math.round(headTurnRatioH*100)}% offset)`);
+            logProctoringEvent("suspicious_movement", "medium", `Head turned horizontally (${Math.round(headTurnRatioH * 100)}% offset)`);
         } else if (headTurnRatioV > 0.25) {
           setFaceStatus("looking_away");
           if (canLog("suspicious_movement", 20000))
-            logProctoringEvent("suspicious_movement", "medium", `Head tilted vertically (${Math.round(headTurnRatioV*100)}% offset)`);
+            logProctoringEvent("suspicious_movement", "medium", `Head tilted vertically (${Math.round(headTurnRatioV * 100)}% offset)`);
         } else if (irisDeviation > 0.13) {
           setFaceStatus("looking_away");
           if (canLog("suspicious_movement", 20000))
@@ -518,7 +518,7 @@ const TakeExam = () => {
   const exitFullscreen = () => {
     try {
       if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen().catch(() => { });
       } else if (document.webkitExitFullscreen) {
         document.webkitExitFullscreen();
       } else if (document.msExitFullscreen) {
@@ -655,7 +655,7 @@ const TakeExam = () => {
     if (e.key === "PrintScreen") {
       e.preventDefault();
       // Try to clear clipboard to ruin the screenshot if it bypassed e.preventDefault()
-      try { navigator.clipboard.writeText(""); } catch (err) {}
+      try { navigator.clipboard.writeText(""); } catch (err) { }
       logProctoringEvent(
         "screenshot_attempt",
         "high",
@@ -737,23 +737,52 @@ const TakeExam = () => {
       clearInterval(faceDetectionIntervalRef.current);
       faceDetectionIntervalRef.current = null;
     }
-    if (gazeTrackerRef.current) {
-      gazeTrackerRef.current.stop();
-      gazeTrackerRef.current = null;
+
+    // Force stop all video elements and streams on the page FIRST before ending webgazer.
+    try {
+      if (window.localstream) {
+        window.localstream.getTracks().forEach((track) => track.stop());
+      }
+      if (window.webgazer && window.webgazer.stream) {
+        window.webgazer.stream.getTracks().forEach((track) => track.stop());
+      }
+      document.querySelectorAll("video").forEach((vid) => {
+        if (vid.srcObject && typeof vid.srcObject.getTracks === 'function') {
+          vid.srcObject.getTracks().forEach((track) => track.stop());
+          vid.srcObject = null;
+        }
+      });
+    } catch(err) {
+      console.warn("Error sweeping video tags", err);
     }
+
+    try {
+      if (gazeTrackerRef.current) {
+        gazeTrackerRef.current.stop();
+        gazeTrackerRef.current = null;
+      }
+    } catch(e) {}
+
     if (focusWarningTimerRef.current) {
       clearTimeout(focusWarningTimerRef.current);
     }
 
-    // Stop via the dedicated stream ref first (reliable even after navigation).
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
+    try {
+      // Stop via the dedicated stream ref first (reliable even after navigation).
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      // Also clear the video element's srcObject so the browser releases the device.
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    } catch(e) {}
 
-    // Also clear the video element's srcObject so the browser releases the device.
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
+    if (window.webgazer) {
+      try {
+        window.webgazer.end();
+      } catch (err) {}
     }
   };
 
@@ -859,7 +888,7 @@ const TakeExam = () => {
       console.error("Error submitting exam:", error);
       alert(
         "Error submitting exam: " +
-          (error.response?.data?.message || error.message),
+        (error.response?.data?.message || error.message),
       );
       setSubmitting(false);
     }
@@ -1014,10 +1043,10 @@ const TakeExam = () => {
           </div>
           {webcamEnabled && faceStatus !== "idle" && (
             <div style={{ fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "4px", fontWeight: 600 }}>
-              {faceStatus === "ok"             && <span style={{ color: "#22c55e" }}>🟢 Face OK</span>}
-              {faceStatus === "no_face"        && <span style={{ color: "#ef4444" }}>🔴 No Face!</span>}
+              {faceStatus === "ok" && <span style={{ color: "#22c55e" }}>🟢 Face OK</span>}
+              {faceStatus === "no_face" && <span style={{ color: "#ef4444" }}>🔴 No Face!</span>}
               {faceStatus === "multiple_faces" && <span style={{ color: "#ef4444" }}>🔴 Multiple Faces!</span>}
-              {faceStatus === "looking_away"   && <span style={{ color: "#f59e0b" }}>🟡 Look at screen</span>}
+              {faceStatus === "looking_away" && <span style={{ color: "#f59e0b" }}>🟡 Look at screen</span>}
             </div>
           )}
         </div>
@@ -1092,7 +1121,7 @@ const TakeExam = () => {
             Question {currentQuestion + 1} of {exam.questions.length} (
             {currentQ.points} pt{currentQ.points !== 1 ? "s" : ""})
           </h3>
-          
+
           {currentQ.constraints && (
             <div className="question-constraints">
               <span className={`constraint-badge difficulty-${currentQ.constraints.difficultyLevel}`}>
@@ -1105,7 +1134,7 @@ const TakeExam = () => {
               )}
             </div>
           )}
-          
+
           <p className="question-text">{currentQ.question}</p>
 
           {currentQ.type === "mcq" && (

@@ -6,7 +6,7 @@ import "./CalibrationScreen.css";
 
 const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, sessionId }) => {
   const [status, setStatus] = useState("loading"); // loading, calibrating, complete, error
-  const [timeRemaining, setTimeRemaining] = useState(30);
+  const [timeRemaining, setTimeRemaining] = useState(10);
   const [faceDetectionStats, setFaceDetectionStats] = useState({
     framesAnalyzed: 0,
     facesDetected: 0,
@@ -50,7 +50,7 @@ const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, 
         
         // Start calibration immediately
         setStatus("calibrating");
-        setTimeRemaining(30);
+        setTimeRemaining(10);
       } catch (error) {
         console.error("Failed to load face detection models:", error);
         setStatus("error");
@@ -61,16 +61,16 @@ const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, 
     loadModels();
   }, []); // Empty dependency - run only once on mount
 
-  // Start 30-second calibration timer - ONLY when calibrating starts
+  // Start 10-second calibration timer - ONLY when calibrating starts
   useEffect(() => {
     if (status !== "calibrating") return;
 
-    console.log("Timer started - 30 seconds");
+    console.log("Timer started - 10 seconds");
     
-    // Ensure timer starts at 30
-    setTimeRemaining(30);
+    // Ensure timer starts at 10
+    setTimeRemaining(10);
     
-    let secondsRemaining = 30;
+    let secondsRemaining = 10;
     
     timerRef.current = setInterval(() => {
       secondsRemaining--;
@@ -152,10 +152,25 @@ const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, 
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Find the primary face (largest area)
+      let largestFaceIndex = 0;
+      let maxArea = 0;
+      resizedDetections.forEach((detection, idx) => {
+        const box = detection.detection.box;
+        const area = box.width * box.height;
+        if (area > maxArea) {
+          maxArea = area;
+          largestFaceIndex = idx;
+        }
+      });
+
       // Draw boxes and landmarks
-      resizedDetections.forEach((detection) => {
-        const box = detection.box;
-        ctx.strokeStyle = "#00FF00";
+      resizedDetections.forEach((detection, idx) => {
+        const box = detection.detection.box;
+        const isMainFace = idx === largestFaceIndex || resizedDetections.length === 1;
+        const color = isMainFace ? "#00FF00" : "#FF0000";
+        
+        ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.strokeRect(
           box.x,
@@ -166,7 +181,7 @@ const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, 
 
         // Draw landmarks
         if (detection.landmarks) {
-          ctx.fillStyle = "#00FF00";
+          ctx.fillStyle = color;
           ctx.globalAlpha = 0.5;
           detection.landmarks.positions.forEach((point) => {
             ctx.fillRect(point.x - 2, point.y - 2, 4, 4);
@@ -174,6 +189,9 @@ const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, 
           ctx.globalAlpha = 1;
         }
       });
+
+      // Track maximum simultaneous faces
+      stats.maxSimultaneousFaces = Math.max(stats.maxSimultaneousFaces || 0, detections.length);
 
       // Collect calibration data
       if (detections.length === 1) {
@@ -247,9 +265,9 @@ const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, 
       const calibrationData = {
         status: "calibrated",
         timestamp: new Date(),
-        duration: 30,
+        duration: 10,
         framesAnalyzed: stats.framesAnalyzed,
-        facesDetected: stats.facesDetected,
+        facesDetected: stats.maxSimultaneousFaces || 0,
         detectionRate,
         thresholds: {
           minFaceDistance: avgDistance * 0.8, 
@@ -289,7 +307,12 @@ const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, 
           sessionId,
           calibrationData
         );
-        onCalibrationComplete?.(result.session);
+        
+        // Save session data so the "Continue to Exam" button can utilize it
+        setCalibrationData(prev => ({
+          ...prev,
+          session: result.session
+        }));
       } catch (error) {
         console.error("Error saving calibration data:", error);
         setStatus("error");
@@ -380,26 +403,40 @@ const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, 
             <p>Your camera has been calibrated successfully.</p>
 
             {calibrationData && (
-              <div className="calibration-results">
-                <p>
-                  Detection Rate:{" "}
-                  {calibrationData.detectionRate}%
-                </p>
-                <p>
-                  Lighting: {
-                    calibrationData.environment
-                      .lighting.average
-                  }{" "}
-                  ({calibrationData.environment
-                    .lighting.average < 100
-                    ? "Low"
-                    : calibrationData.environment
-                        .lighting.average < 180
-                    ? "Medium"
-                    : "High"}
-                  )
-                </p>
-              </div>
+              <>
+                <div className="calibration-results">
+                  <p>
+                    Faces Detected: {calibrationData.facesDetected}
+                  </p>
+                  <p>
+                    Detection Rate:{" "}
+                    {calibrationData.detectionRate}%
+                  </p>
+                  <p>
+                    Lighting: {
+                      calibrationData.environment
+                        .lighting.average
+                    }{" "}
+                    ({calibrationData.environment
+                      .lighting.average < 100
+                      ? "Low"
+                      : calibrationData.environment
+                          .lighting.average < 180
+                      ? "Medium"
+                      : "High"}
+                    )
+                  </p>
+                </div>
+                
+                <button
+                  className="calibration-btn-retry"
+                  onClick={() => onCalibrationComplete?.(calibrationData.session)}
+                  style={{ marginTop: '20px', backgroundColor: '#4CAF50', color: 'white', border: 'none' }}
+                  disabled={!calibrationData.session}
+                >
+                  {calibrationData.session ? "Continue to Exam" : "Saving..."}
+                </button>
+              </>
             )}
           </div>
         )}
