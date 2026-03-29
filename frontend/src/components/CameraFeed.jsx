@@ -72,8 +72,20 @@ const CameraFeed = ({
   useEffect(() => {
     if (!isActive || !videoRef.current || !onFrame) return;
 
-    const captureFrame = () => {
-      onFrame(videoRef.current, canvasRef.current);
+    let isProcessing = false;
+
+    const captureFrame = async () => {
+      // Check if video is actually playing/ready and we're not busy
+      if (videoRef.current.readyState >= 2 && !isProcessing) {
+        isProcessing = true;
+        try {
+          await onFrame(videoRef.current, canvasRef.current);
+        } catch (err) {
+          console.error("Frame processing error:", err);
+        } finally {
+          isProcessing = false;
+        }
+      }
       animationFrameRef.current = requestAnimationFrame(captureFrame);
     };
 

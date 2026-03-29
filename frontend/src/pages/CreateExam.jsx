@@ -267,9 +267,60 @@ const CreateExam = () => {
 
   return (
     <div className="create-exam">
-      <div className="create-exam-header">
-        <h1>{isEditing ? "Edit Exam" : "Create New Exam"}</h1>
-        <button onClick={() => navigate("/dashboard")} className="btn-back">
+      <div
+        style={{
+          background: 'linear-gradient(135deg, #ffffff 0%, #f9fafc 100%)',
+          padding: '24px 36px',
+          borderRadius: '12px',
+          border: '1px solid #e5e9f0',
+          display: 'flex',
+          justifyContent: 'flex-start',
+          alignItems: 'center',
+          gap: '24px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+          marginBottom: '24px',
+          minHeight: '70px',
+        }}
+      >
+        <h1
+          style={{
+            margin: '0',
+            color: '#1f2937',
+            fontSize: '24px',
+            fontWeight: '700',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {isEditing ? "Edit Exam" : "Create New Exam"}
+        </h1>
+        <button
+          onClick={() => navigate("/dashboard")}
+          style={{
+            padding: '10px 24px',
+            background: '#030303',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '14px',
+            transition: 'all 0.2s ease',
+            whiteSpace: 'nowrap',
+            flexShrink: '0',
+            marginLeft: 'auto',
+            boxShadow: '0 2px 4px rgba(7, 7, 7, 0.25)',
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.background = '#0b0b0b';
+            e.target.style.boxShadow = '0 4px 12px rgba(11, 11, 11, 0.35)';
+            e.target.style.transform = 'translateY(-1px)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = '#0f0f0f';
+            e.target.style.boxShadow = '0 2px 4px rgba(100, 116, 139, 0.25)';
+            e.target.style.transform = 'translateY(0)';
+          }}
+        >
           Back to Dashboard
         </button>
       </div>

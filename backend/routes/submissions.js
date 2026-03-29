@@ -40,7 +40,7 @@ router.post("/start", verifyFirebaseToken, async (req, res) => {
     });
 
     if (submission) {
-      if (submission.status === "submitted") {
+      if (submission.status !== "in_progress") {
         return res
           .status(400)
           .json({ message: "You have already submitted this exam" });
@@ -174,30 +174,33 @@ router.post("/", submissionLimiter, verifyFirebaseToken, async (req, res) => {
       if (!submission) {
         return res.status(404).json({ message: "Submission not found" });
       }
-      if (submission.status === "submitted") {
+      if (submission.status !== "in_progress") {
         return res
           .status(400)
           .json({ message: "You have already submitted this exam" });
       }
     } else {
-      // Check if already submitted
+      // Check if any submission already exists for this exam
       const existingSubmission = await Submission.findOne({
         examId,
         studentId: user._id,
-        status: "submitted",
       });
+      
       if (existingSubmission) {
-        return res
-          .status(400)
-          .json({ message: "You have already submitted this exam" });
+        if (existingSubmission.status !== "in_progress") {
+          return res
+            .status(400)
+            .json({ message: "You have already submitted this exam" });
+        }
+        submission = existingSubmission;
+      } else {
+        // Create new submission if absolutely no submission exists
+        submission = new Submission({
+          examId,
+          studentId: user._id,
+          maxScore: exam.questions.reduce((sum, q) => sum + q.points, 0),
+        });
       }
-
-      // Create new submission if none exists
-      submission = new Submission({
-        examId,
-        studentId: user._id,
-        maxScore: exam.questions.reduce((sum, q) => sum + q.points, 0),
-      });
     }
 
     // ── Grading: Split MCQ (instant) vs Text (async SLM) ──────────

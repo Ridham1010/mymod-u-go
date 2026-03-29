@@ -144,8 +144,8 @@ describe("AutoGrader Service", () => {
 
   // ─── Score Normalization ──────────────────────────────────────────
   describe("normalizeScore — Score-to-Marks Conversion", () => {
-    test("should convert 0.75 × 10 points → 8 marks", () => {
-      expect(normalizeScore(0.75, 10)).toBe(8);
+    test("should convert 0.75 × 10 points → 7.5 marks", () => {
+      expect(normalizeScore(0.75, 10)).toBe(7.5);
     });
 
     test("should convert 1.0 × 20 points → 20 marks", () => {
@@ -156,12 +156,12 @@ describe("AutoGrader Service", () => {
       expect(normalizeScore(0.0, 10)).toBe(0);
     });
 
-    test("should round 0.33 × 10 → 3 marks", () => {
-      expect(normalizeScore(0.33, 10)).toBe(3);
+    test("should calculate exact score 0.33 × 10 → 3.3 marks", () => {
+      expect(normalizeScore(0.33, 10)).toBe(3.3);
     });
 
-    test("should round 0.55 × 10 → 6 marks (nearest integer)", () => {
-      expect(normalizeScore(0.55, 10)).toBe(6);
+    test("should calculate exact score 0.55 × 10 → 5.5 marks", () => {
+      expect(normalizeScore(0.55, 10)).toBe(5.5);
     });
   });
 
@@ -213,7 +213,7 @@ describe("AutoGrader Service", () => {
       );
 
       expect(result.slmScore).toBe(0.85);
-      expect(result.marksAwarded).toBe(9); // round(0.85 × 10) = 9
+      expect(result.marksAwarded).toBe(8.5); // eval 0.85 × 10 = 8.5
       expect(result.isCorrect).toBe(true); // >= 0.5 threshold
       expect(result.gradingStatus).toBe("graded");
       expect(result.gradingMethod).toBe("slm_semantic");
@@ -233,7 +233,7 @@ describe("AutoGrader Service", () => {
       );
 
       expect(result.slmScore).toBe(0.05);
-      expect(result.marksAwarded).toBe(1); // round(0.05 × 10) = 1
+      expect(result.marksAwarded).toBe(0.5); // eval 0.05 × 10 = 0.5
       expect(result.isCorrect).toBe(false);
     });
 

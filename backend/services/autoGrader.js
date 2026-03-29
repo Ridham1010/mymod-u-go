@@ -88,7 +88,7 @@ async function callSLM(modelAnswer, studentAnswer) {
  * marks = round(slmScore × maxMarks)
  */
 function normalizeScore(slmScore, maxMarks) {
-  return Math.round(slmScore * maxMarks);
+  return Number((slmScore * maxMarks).toFixed(2));
 }
 
 /**
