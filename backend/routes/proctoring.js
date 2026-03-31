@@ -520,4 +520,63 @@ router.post("/:id/calibrate", verifyFirebaseToken, async (req, res) => {
   }
 });
 
+// Get proctoring session by submission ID (for teachers reviewing submissions)
+router.get("/by-submission/:submissionId", verifyFirebaseToken, async (req, res) => {
+  try {
+    const user = await User.findOne({ firebaseUid: req.user.uid });
+    if (!user || !["teacher", "admin", "proctor"].includes(user.role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const session = await ProctoringSession.findOne({
+      submissionId: req.params.submissionId,
+    })
+      .populate("studentId", "name email")
+      .populate("examId", "title");
+
+    if (!session) {
+      return res.status(404).json({ message: "No proctoring session found for this submission" });
+    }
+
+    res.json({ session });
+  } catch (error) {
+    console.error("Error fetching session by submission:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Save violation clip URL (uploaded to Firebase Storage by the client)
+router.post("/violation-clip", verifyFirebaseToken, async (req, res) => {
+  try {
+    const user = await User.findOne({ firebaseUid: req.user.uid });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const { sessionId, url, eventType, duration } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ message: "Clip URL is required" });
+    }
+
+    const session = await ProctoringSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+
+    session.violationClips.push({
+      timestamp: new Date(),
+      url,
+      eventType: eventType || "unknown",
+      duration: duration || 10,
+    });
+
+    await session.save();
+    res.json({ message: "Violation clip saved", clipCount: session.violationClips.length });
+  } catch (error) {
+    console.error("Error saving violation clip:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 module.exports = router;

@@ -250,6 +250,20 @@ export const examService = {
     return response.data;
   },
 
+  saveViolationClip: async (token, sessionId, url, eventType, duration) => {
+    const response = await api.post(
+      "/proctoring/violation-clip",
+      {
+        sessionId,
+        url,
+        eventType,
+        duration,
+      },
+      authHeader(token),
+    );
+    return response.data;
+  },
+
   getActiveSessions: async (token) => {
     const response = await api.get("/proctoring/active", authHeader(token));
     return response.data;
@@ -263,6 +277,14 @@ export const examService = {
   getSessionDetails: async (token, sessionId) => {
     const response = await api.get(
       `/proctoring/${sessionId}`,
+      authHeader(token),
+    );
+    return response.data;
+  },
+
+  getSessionBySubmission: async (token, submissionId) => {
+    const response = await api.get(
+      `/proctoring/by-submission/${submissionId}`,
       authHeader(token),
     );
     return response.data;

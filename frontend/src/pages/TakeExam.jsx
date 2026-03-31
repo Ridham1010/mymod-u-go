@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { examService } from "../services/examService";
 import CalibrationScreen from "../components/CalibrationScreen";
 import GazeTracker from "../components/GazeTracker";
+import StreamManager from "../components/StreamManager";
 import "./TakeExam.css";
 
 const TakeExam = () => {
@@ -51,6 +52,7 @@ const TakeExam = () => {
   const faceModelsLoadedRef = useRef(false); // Tracks whether face-api models are loaded
   const lastFaceEventRef = useRef({}); // Per-event cooldown timestamps
   const gazeTrackerRef = useRef(null); // WebGazer-based gaze deviation tracker
+  const streamManagerRef = useRef(null); // MediaRecorder-based violation clip capture
 
   // Load exam data on mount (for instructions screen)
   useEffect(() => {
@@ -270,12 +272,16 @@ const TakeExam = () => {
 
       if (count === 0) {
         setFaceStatus("no_face");
-        if (canLog("face_not_detected"))
+        if (canLog("face_not_detected")) {
           logProctoringEvent("face_not_detected", "high", "No face detected in frame");
+          streamManagerRef.current?.triggerViolationCapture("face_not_detected");
+        }
       } else if (count > 1) {
         setFaceStatus("multiple_faces");
-        if (canLog("multiple_faces"))
+        if (canLog("multiple_faces")) {
           logProctoringEvent("multiple_faces", "high", `${count} faces detected simultaneously`);
+          streamManagerRef.current?.triggerViolationCapture("multiple_faces");
+        }
       } else {
         const pts = detections[0].landmarks.positions;
         const box = detections[0].detection.box;
@@ -316,20 +322,28 @@ const TakeExam = () => {
 
         if (headTurnRatioH > 0.10) {
           setFaceStatus("looking_away");
-          if (canLog("suspicious_movement", 20000))
+          if (canLog("suspicious_movement", 20000)) {
             logProctoringEvent("suspicious_movement", "medium", `Head turned horizontally (${Math.round(headTurnRatioH * 100)}% offset)`);
+            streamManagerRef.current?.triggerViolationCapture("suspicious_movement");
+          }
         } else if (headTurnRatioV > 0.25) {
           setFaceStatus("looking_away");
-          if (canLog("suspicious_movement", 20000))
+          if (canLog("suspicious_movement", 20000)) {
             logProctoringEvent("suspicious_movement", "medium", `Head tilted vertically (${Math.round(headTurnRatioV * 100)}% offset)`);
+            streamManagerRef.current?.triggerViolationCapture("suspicious_movement");
+          }
         } else if (irisDeviation > 0.13) {
           setFaceStatus("looking_away");
-          if (canLog("suspicious_movement", 20000))
+          if (canLog("suspicious_movement", 20000)) {
             logProctoringEvent("suspicious_movement", "medium", `Eyes looking sideways (iris offset: ${irisDeviation.toFixed(2)})`);
+            streamManagerRef.current?.triggerViolationCapture("suspicious_movement");
+          }
         } else if (avgEAR < 0.18) {
           setFaceStatus("looking_away");
-          if (canLog("suspicious_movement", 20000))
+          if (canLog("suspicious_movement", 20000)) {
             logProctoringEvent("suspicious_movement", "medium", `Eyes closed/downcast (EAR: ${avgEAR.toFixed(2)})`);
+            streamManagerRef.current?.triggerViolationCapture("suspicious_movement");
+          }
         } else {
           setFaceStatus("ok");
         }
@@ -428,6 +442,31 @@ const TakeExam = () => {
     // Enable proctoring monitoring NOW
     monitoringEnabledRef.current = true;
 
+    // Start StreamManager for violation clip capture
+    if (streamRef.current && proctoringSessionRef.current) {
+      const sm = new StreamManager({
+        stream: streamRef.current,
+        sessionId: proctoringSessionRef.current._id,
+        onClipUploaded: async (url, eventType) => {
+          try {
+            const token = await getAuthToken();
+            await examService.saveViolationClip(
+              token,
+              proctoringSessionRef.current._id,
+              url,
+              eventType,
+              10, // duration: 5s pre + 5s post
+            );
+          } catch (err) {
+            console.error("Failed to save violation clip:", err);
+          }
+        },
+        onError: (err) => console.error("StreamManager error:", err),
+      });
+      sm.start();
+      streamManagerRef.current = sm;
+    }
+
     // Start periodic screenshot uploads
     webcamIntervalRef.current = setInterval(() => {
       captureAndUploadScreenshot();
@@ -445,6 +484,7 @@ const TakeExam = () => {
     const tracker = new GazeTracker({
       onViolation: (details) => {
         logProctoringEvent("gaze_deviation", "high", details);
+        streamManagerRef.current?.triggerViolationCapture("gaze_deviation");
         showFocusWarning(
           "Warning: Your gaze left the screen for more than 5 seconds. This has been flagged as a violation."
         );
@@ -760,6 +800,14 @@ const TakeExam = () => {
       if (gazeTrackerRef.current) {
         gazeTrackerRef.current.stop();
         gazeTrackerRef.current = null;
+      }
+    } catch(e) {}
+
+    // Stop StreamManager (violation clip recorder)
+    try {
+      if (streamManagerRef.current) {
+        streamManagerRef.current.stop();
+        streamManagerRef.current = null;
       }
     } catch(e) {}
 

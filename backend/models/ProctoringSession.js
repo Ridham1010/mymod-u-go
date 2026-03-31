@@ -115,6 +115,7 @@ const proctoringSessionSchema = new mongoose.Schema({
           "screenshot_attempt",
           "calibration_completed",
           "calibration_failed",
+          "gaze_deviation",
         ],
       },
       timestamp: {
@@ -172,6 +173,24 @@ const proctoringSessionSchema = new mongoose.Schema({
       timestamp: Date,
       image: String,
       reason: String,
+    },
+  ],
+  // Violation video clips (uploaded to Firebase Storage on anomaly detection)
+  violationClips: [
+    {
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+      url: {
+        type: String,
+        required: true,
+      },
+      eventType: String, // e.g. "face_not_detected", "multiple_faces", "gaze_deviation"
+      duration: {
+        type: Number,
+        default: 10, // seconds (5 pre + 5 post)
+      },
     },
   ],
   // Proctor notes and review
