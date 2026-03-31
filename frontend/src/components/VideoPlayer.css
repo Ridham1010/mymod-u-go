@@ -1,0 +1,81 @@
+.video-player-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 225px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.video-player-wrapper video {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.video-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.05);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.video-loader p {
+  font-size: 0.85rem;
+  color: #555;
+  margin-top: 10px;
+}
+
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #007bff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.video-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  color: #666;
+}
+
+.video-error p {
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.video-retry-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.video-retry-btn:hover {
+  background: #0056b3;
+}

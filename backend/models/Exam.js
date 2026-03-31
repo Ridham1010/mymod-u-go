@@ -174,6 +174,7 @@ const examSchema = new mongoose.Schema({
 
 // Calculate total points
 examSchema.virtual("totalPoints").get(function () {
+  if (!this.questions) return 0;
   return this.questions.reduce((sum, q) => sum + q.points, 0);
 });
 

@@ -1447,3 +1447,46 @@ td.warning {
     align-items: flex-start;
   }
 }
+/* ── Violation clips ────────────────────── */
+.violation-clips-section {
+  margin-top: 20px;
+}
+.violation-clips-section h3 {
+  margin-bottom: 12px;
+}
+.violation-clips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.violation-clip-item {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 12px;
+}
+.clip-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.clip-event-type {
+  font-weight: 600;
+  text-transform: capitalize;
+  color: #dc2626;
+  font-size: 0.85rem;
+}
+.clip-time {
+  color: #6b7280;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.clip-duration {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}

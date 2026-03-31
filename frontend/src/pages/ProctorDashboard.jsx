@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { examService } from "../services/examService";
+import VideoPlayer from "../components/VideoPlayer";
 import "./ProctorDashboard.css";
 
 const ProctorDashboard = () => {
@@ -382,12 +383,7 @@ const ProctorDashboard = () => {
                         </span>
                         <span className="clip-duration">{clip.duration || 10}s</span>
                       </div>
-                      <video
-                        src={clip.url}
-                        controls
-                        preload="metadata"
-                        style={{ width: "100%", maxWidth: "400px", borderRadius: "8px", marginTop: "6px" }}
-                      />
+                      <VideoPlayer src={clip.url} />
                     </div>
                   ))}
                 </div>

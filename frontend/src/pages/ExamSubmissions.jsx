@@ -4,6 +4,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { examService } from "../services/examService";
 import "./ExamSubmissions.css";
 
+import VideoPlayer from "../components/VideoPlayer";
+
 const ExamSubmissions = () => {
   const { examId } = useParams();
   const { getAuthToken } = useAuth();
@@ -870,32 +872,31 @@ const ExamSubmissions = () => {
               )}
 
               {/* ── Violation Clips ── */}
-              {violationClips.length > 0 && (
-                <div className="violation-clips-section">
-                  <h3>Violation Clips ({violationClips.length})</h3>
+              <div className="violation-clips-section">
+                <h3>Violation Clips ({violationClips.length})</h3>
+                {violationClips.length > 0 ? (
                   <div className="violation-clips-list">
                     {violationClips.map((clip, index) => (
                       <div key={index} className="violation-clip-item">
                         <div className="clip-header">
                           <span className="clip-event-type">
-                            {clip.eventType?.replace(/_/g, " ")}
+                            {clip.eventType ? clip.eventType.replace(/_/g, " ") : "violation"}
                           </span>
                           <span className="clip-time">
                             {new Date(clip.timestamp).toLocaleTimeString()}
                           </span>
                           <span className="clip-duration">{clip.duration || 10}s</span>
                         </div>
-                        <video
-                          src={clip.url}
-                          controls
-                          preload="metadata"
-                          style={{ width: "100%", maxWidth: "400px", borderRadius: "8px", marginTop: "6px" }}
-                        />
+                        <VideoPlayer src={clip.url} />
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-muted" style={{ fontStyle: "italic", fontSize: "0.9rem", color: "#666" }}>
+                    No violation clips were recorded for this session.
+                  </p>
+                )}
+              </div>
 
               {/* ── Review Section ── */}
               <div className="review-section">
