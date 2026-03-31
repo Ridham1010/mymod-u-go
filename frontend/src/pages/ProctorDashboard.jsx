@@ -367,6 +367,33 @@ const ProctorDashboard = () => {
               </div>
             )}
 
+            {selectedSession.violationClips?.length > 0 && (
+              <div className="violation-clips-section">
+                <h3>Violation Clips ({selectedSession.violationClips.length})</h3>
+                <div className="violation-clips-list">
+                  {selectedSession.violationClips.map((clip, index) => (
+                    <div key={index} className="violation-clip-item">
+                      <div className="clip-header">
+                        <span className="clip-event-type">
+                          {clip.eventType?.replace(/_/g, " ")}
+                        </span>
+                        <span className="clip-time">
+                          {new Date(clip.timestamp).toLocaleTimeString()}
+                        </span>
+                        <span className="clip-duration">{clip.duration || 10}s</span>
+                      </div>
+                      <video
+                        src={clip.url}
+                        controls
+                        preload="metadata"
+                        style={{ width: "100%", maxWidth: "400px", borderRadius: "8px", marginTop: "6px" }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="review-section">
               <h3>Review Notes</h3>
               <textarea

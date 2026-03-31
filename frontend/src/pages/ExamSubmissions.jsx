@@ -18,6 +18,9 @@ const ExamSubmissions = () => {
   const [reviewNotes, setReviewNotes] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
+  // Violation clips from proctoring session
+  const [violationClips, setViolationClips] = useState([]);
+
   // Override state
   const [editingQuestionId, setEditingQuestionId] = useState(null);
   const [editMarks, setEditMarks] = useState("");
@@ -86,6 +89,14 @@ const ExamSubmissions = () => {
       setEditingTotalScore(false);
       setEditTotalMarks("");
       setTotalOverrideReason("");
+
+      // Fetch violation clips from the proctoring session
+      try {
+        const procData = await examService.getSessionBySubmission(token, submission._id);
+        setViolationClips(procData.session?.violationClips || []);
+      } catch {
+        setViolationClips([]);
+      }
     } catch (error) {
       showToast("Error loading submission details", "error");
     }
@@ -99,6 +110,7 @@ const ExamSubmissions = () => {
     setEditingTotalScore(false);
     setEditTotalMarks("");
     setTotalOverrideReason("");
+    setViolationClips([]);
   };
 
   const handleReviewSubmission = async (isFlagged) => {
@@ -851,6 +863,34 @@ const ExamSubmissions = () => {
                         <span className={`event-severity ${event.severity}`}>
                           {event.severity}
                         </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Violation Clips ── */}
+              {violationClips.length > 0 && (
+                <div className="violation-clips-section">
+                  <h3>Violation Clips ({violationClips.length})</h3>
+                  <div className="violation-clips-list">
+                    {violationClips.map((clip, index) => (
+                      <div key={index} className="violation-clip-item">
+                        <div className="clip-header">
+                          <span className="clip-event-type">
+                            {clip.eventType?.replace(/_/g, " ")}
+                          </span>
+                          <span className="clip-time">
+                            {new Date(clip.timestamp).toLocaleTimeString()}
+                          </span>
+                          <span className="clip-duration">{clip.duration || 10}s</span>
+                        </div>
+                        <video
+                          src={clip.url}
+                          controls
+                          preload="metadata"
+                          style={{ width: "100%", maxWidth: "400px", borderRadius: "8px", marginTop: "6px" }}
+                        />
                       </div>
                     ))}
                   </div>
