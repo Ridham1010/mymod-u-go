@@ -524,18 +524,21 @@ router.post("/:id/calibrate", verifyFirebaseToken, async (req, res) => {
 router.get("/by-submission/:submissionId", verifyFirebaseToken, async (req, res) => {
   try {
     const user = await User.findOne({ firebaseUid: req.user.uid });
-    if (!user || !["teacher", "admin", "proctor"].includes(user.role)) {
-      return res.status(403).json({ message: "Access denied" });
-    }
+      if (!user || !["teacher", "admin", "proctor"].includes(user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
 
-    const session = await ProctoringSession.findOne({
-      submissionId: req.params.submissionId,
-    })
-      .populate("studentId", "name email")
-      .populate("examId", "title");
+      // Fetch the MOST RECENT proctoring session for this submission
+      // to avoid pulling a stale/abandoned session on retries
+      const session = await ProctoringSession.findOne({
+        submissionId: req.params.submissionId,
+      })
+        .sort({ createdAt: -1 })
+        .populate("studentId", "name email")
+        .populate("examId", "title");
 
-    if (!session) {
-      return res.status(404).json({ message: "No proctoring session found for this submission" });
+      if (!session) {
+        return res.status(404).json({ message: "No proctoring session found for this submission" });
     }
 
     res.json({ session });
@@ -545,9 +548,10 @@ router.get("/by-submission/:submissionId", verifyFirebaseToken, async (req, res)
   }
 });
 
-// Save violation clip URL (uploaded to Firebase Storage by the client)
+// Save violation clip URL (uploaded to Firebase/Cloudinary by the client)
 router.post("/violation-clip", verifyFirebaseToken, async (req, res) => {
   try {
+    console.log("RECEIVED CLIP req.body:", req.body);
     const user = await User.findOne({ firebaseUid: req.user.uid });
     if (!user) {
       return res.status(404).json({ message: "User not found" });

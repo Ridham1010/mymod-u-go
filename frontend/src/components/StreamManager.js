@@ -1,27 +1,25 @@
 /**
- * StreamManager — Continuous 5-second segment capture with violation-triggered upload.
+ * StreamManager — Continuous rolling buffer capture with zero timestamp gaps.
  *
  * Architecture:
- *   - MediaRecorder records the webcam stream in 5-second chunks using VP9.
- *   - A circular buffer retains only the PREVIOUS completed segment (one Blob).
- *     No compliant footage is ever transmitted.
- *   - On anomaly detection the caller invokes `triggerViolationCapture()`:
- *       1. The "pre" segment (last 5 s) is immediately frozen from the buffer.
- *       2. Recording continues for another 5 s to capture the "post" segment.
- *       3. Both blobs are concatenated and uploaded to Firebase Storage.
- *       4. The download URL is returned via a callback.
- *   - A 30-second cooldown prevents rapid-fire uploads from draining bandwidth.
+ *   - To capture the ~5s before a violation without corrupting WebM timelines via naive
+ *     blob concatenation, we use "staggered recorders".
+ *   - A new 10-second MediaRecorder starts every 3 seconds. 
+ *   - At any given time, there are 3-4 recorders overlapping.
+ *   - Upon violation, we pick the specific recorder that started roughly 4.5 seconds ago.
+ *   - We tag it, let it naturally finish its 10-second lifetime, and upload it!
+ *   - Result: A perfectly valid, singular 10s WebM file with ~4.5s pre-violation 
+ *     and ~5.5s post-violation context, completely avoiding the built-in player 
+ *     duration glitches.
  *
  * Codec / size budget:
- *   320 × 240 VP9 @ ~200 kbps ≈ 125 KB per 5-s segment ≈ 250 KB per 10-s clip.
+ *   320 × 240 VP9 @ ~200 kbps ≈ 250 KB per 10-s clip.
  *   Firebase Spark free tier: 5 GB storage, 1 GB/day egress, 20K uploads/day.
  */
 
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "../config/firebase";
-
-const SEGMENT_DURATION_MS = 5000;
-const UPLOAD_COOLDOWN_MS = 30000;
+const CAPTURE_DURATION_MS = 10000; // 10 seconds capture total
+const STAGGER_INTERVAL_MS = 3000;  // Start a new recorder every 3 seconds
+const UPLOAD_COOLDOWN_MS = 15000;  // 15s cooldown to prevent spamming
 
 class StreamManager {
   /**
@@ -38,86 +36,133 @@ class StreamManager {
     this._onClipUploaded = onClipUploaded;
     this._onError = onError || console.error;
 
-    // Circular buffer: holds the PREVIOUS completed segment
-    this._previousSegment = null;
-    // Chunks accumulating for the CURRENT segment being recorded
-    this._currentChunks = [];
-
-    this._recorder = null;
-    this._segmentTimer = null;
+    this._rollingRecorders = new Set();
+    this._staggerInterval = null;
+    
     this._running = false;
-    this._capturing = false; // true while a violation capture is in progress
     this._lastUploadAt = 0;
-
-    // For violation capture
-    this._violationEventType = null;
-    this._preBlob = null;
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
 
-  /** Start continuous segment recording. */
+  /** Start ready state and interval for staggered segment recording. */
   start() {
     if (this._running) return;
     this._running = true;
-    this._startNewSegment();
+
+    // Start first recorder immediately
+    this._startRollingRecorder();
+    
+    // Start subsequent staggered recorders
+    this._staggerInterval = setInterval(() => {
+      this._startRollingRecorder();
+    }, STAGGER_INTERVAL_MS);
   }
 
   /** Stop all recording and release resources. */
   stop() {
     this._running = false;
-    this._capturing = false;
 
-    if (this._segmentTimer) {
-      clearTimeout(this._segmentTimer);
-      this._segmentTimer = null;
+    if (this._staggerInterval) {
+      clearInterval(this._staggerInterval);
+      this._staggerInterval = null;
     }
 
-    if (this._recorder && this._recorder.state !== "inactive") {
-      try {
-        this._recorder.stop();
-      } catch {
-        // already stopped
+    // Stop all active recorders
+    for (const rObj of this._rollingRecorders) {
+      if (rObj.recorder.state !== "inactive") {
+        try {
+          rObj.recorder.stop();
+        } catch {
+          // already stopped
+        }
       }
     }
-    this._recorder = null;
-    this._previousSegment = null;
-    this._currentChunks = [];
+    this._rollingRecorders.clear();
   }
 
   /**
    * Trigger a violation capture.
-   *
-   * Freezes the previous 5-second segment as the "pre" portion, then records
-   * 5 more seconds as the "post" portion, concatenates them, uploads to
-   * Firebase Storage, and invokes onClipUploaded with the download URL.
-   *
-   * No-ops if a capture is already in progress or cooldown hasn't elapsed.
-   *
-   * @param {string} eventType — e.g. "face_not_detected", "multiple_faces", etc.
    */
   triggerViolationCapture(eventType) {
-    if (this._capturing || !this._running) return;
+    if (!this._running) return;
 
     // Cooldown guard
     const now = Date.now();
     if (now - this._lastUploadAt < UPLOAD_COOLDOWN_MS) return;
 
-    this._capturing = true;
-    this._violationEventType = eventType;
+    // Pick the most ideal running recorder: we want one that has approx 4.5s of history
+    // (so ~4.5s before violation, ~5.5s after).
+    let bestRecorder = null;
+    let closestToTarget = Infinity;
+    const TARGET_AGE = 4500; // aim for 4.5s old
+
+    for (const rObj of this._rollingRecorders) {
+      if (rObj.isViolationTarget) continue; // Skip if already claimed
+      
+      const age = now - rObj.startTime;
+      if (age > 0) {
+        // Penalize ages over 5000ms significantly so we respect the
+        // "don't do MORE than 5 seconds before" requirement!
+        let penalty = 0;
+        if (age > 5000) penalty = (age - 5000) * 2; 
+
+        const diff = Math.abs(TARGET_AGE - age) + penalty;
+        if (diff < closestToTarget) {
+          closestToTarget = diff;
+          bestRecorder = rObj;
+        }
+      }
+    }
+
+    if (!bestRecorder) return; // Should only happen if stream just started tightly or stopped
+
+    bestRecorder.isViolationTarget = true;
+    bestRecorder.eventType = eventType;
     this._lastUploadAt = now;
-
-    // 1. Freeze the pre-segment (may be null if exam just started — that's fine)
-    this._preBlob = this._previousSegment;
-
-    // 2. Stop the current segment immediately and start a fresh "post" segment
-    this._stopCurrentRecorder();
-
-    // Start a new recorder for the post-violation segment
-    this._startPostCapture();
   }
 
   // ── Internal ────────────────────────────────────────────────────────────────
+
+  _startRollingRecorder() {
+    if (!this._running) return;
+
+    const recorder = this._createRecorder();
+    const rObj = {
+      recorder,
+      startTime: Date.now(),
+      chunks: [],
+      isViolationTarget: false,
+      eventType: null
+    };
+
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) {
+        rObj.chunks.push(e.data);
+      }
+    };
+
+    recorder.onstop = () => {
+      // Remove from active list
+      this._rollingRecorders.delete(rObj);
+      
+      // If this specific interval was flagged for upload, process it
+      if (rObj.isViolationTarget && rObj.chunks.length > 0) {
+        const mergedBlob = new Blob(rObj.chunks, { type: recorder.mimeType || "video/webm" });
+        this._uploadClip(mergedBlob, rObj.eventType);
+      }
+    };
+
+    recorder.start(1000);
+    this._rollingRecorders.add(rObj);
+
+    // Stop and discard (if no violation) after CAPTURE_DURATION_MS
+    setTimeout(() => {
+      if (recorder.state !== "inactive") {
+        recorder.stop();
+      }
+    }, CAPTURE_DURATION_MS);
+  }
 
   _createRecorder() {
     // Prefer VP9; fall back to VP8 or default if unsupported
@@ -143,120 +188,40 @@ class StreamManager {
   }
 
   /**
-   * Start recording a new normal (non-violation) segment.
-   * When it finishes (after SEGMENT_DURATION_MS), the Blob rotates into the
-   * circular buffer and the next segment begins automatically.
-   */
-  _startNewSegment() {
-    if (!this._running || this._capturing) return;
-
-    this._currentChunks = [];
-    this._recorder = this._createRecorder();
-
-    this._recorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        this._currentChunks.push(e.data);
-      }
-    };
-
-    this._recorder.onstop = () => {
-      if (this._currentChunks.length > 0 && !this._capturing) {
-        // Rotate: current → previous (old previous is garbage-collected)
-        this._previousSegment = new Blob(this._currentChunks, {
-          type: this._recorder?.mimeType || "video/webm",
-        });
-      }
-      // If running and NOT in capture mode, start the next segment
-      if (this._running && !this._capturing) {
-        this._startNewSegment();
-      }
-    };
-
-    this._recorder.start();
-
-    // After SEGMENT_DURATION_MS, stop to finalize the segment
-    this._segmentTimer = setTimeout(() => {
-      this._stopCurrentRecorder();
-    }, SEGMENT_DURATION_MS);
-  }
-
-  _stopCurrentRecorder() {
-    if (this._segmentTimer) {
-      clearTimeout(this._segmentTimer);
-      this._segmentTimer = null;
-    }
-    if (this._recorder && this._recorder.state !== "inactive") {
-      try {
-        this._recorder.stop();
-      } catch {
-        // already stopped
-      }
-    }
-  }
-
-  /**
-   * Record the 5-second "post" violation segment, then merge + upload.
-   */
-  _startPostCapture() {
-    this._currentChunks = [];
-    this._recorder = this._createRecorder();
-
-    this._recorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        this._currentChunks.push(e.data);
-      }
-    };
-
-    this._recorder.onstop = () => {
-      const postBlob = new Blob(this._currentChunks, {
-        type: this._recorder?.mimeType || "video/webm",
-      });
-
-      // Merge pre + post
-      const parts = [];
-      if (this._preBlob) parts.push(this._preBlob);
-      parts.push(postBlob);
-
-      const mergedBlob = new Blob(parts, { type: postBlob.type });
-
-      // Upload asynchronously
-      this._uploadClip(mergedBlob, this._violationEventType);
-
-      // Reset state and resume normal segment recording
-      this._capturing = false;
-      this._preBlob = null;
-      this._violationEventType = null;
-      this._previousSegment = null; // clear stale pre-segment
-
-      if (this._running) {
-        this._startNewSegment();
-      }
-    };
-
-    this._recorder.start();
-
-    // Stop after SEGMENT_DURATION_MS to finalize post capture
-    this._segmentTimer = setTimeout(() => {
-      this._stopCurrentRecorder();
-    }, SEGMENT_DURATION_MS);
-  }
-
-  /**
-   * Upload the merged violation clip to Firebase Storage.
-   * Path: violation-clips/{sessionId}/{timestamp}_{eventType}.webm
+   * Upload the merged violation clip to Cloudinary.
    */
   async _uploadClip(blob, eventType) {
     try {
-      const timestamp = Date.now();
-      const path = `violation-clips/${this._sessionId}/${timestamp}_${eventType}.webm`;
-      const storageRef = ref(storage, path);
+      const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-      await uploadBytes(storageRef, blob, {
-        contentType: blob.type || "video/webm",
+      if (!cloudName || !uploadPreset) {
+        throw new Error("Cloudinary configuration missing in environment variables.");
+      }
+
+      const timestamp = Date.now();
+      const fileName = `${timestamp}_${eventType}`;
+
+      const formData = new FormData();
+      formData.append("file", blob);
+      formData.append("upload_preset", uploadPreset);
+      formData.append("folder", `violation-clips/${this._sessionId}`);
+      formData.append("public_id", fileName);
+      formData.append("resource_type", "video");
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
+        method: "POST",
+        body: formData,
       });
 
-      const downloadURL = await getDownloadURL(storageRef);
-      this._onClipUploaded(downloadURL, eventType);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error?.message || "Cloudinary upload failed");
+      }
+
+      const data = await res.json();
+      console.log("Cloudinary Upload SUCCESS:", data.secure_url);
+      this._onClipUploaded(data.secure_url, eventType);
     } catch (err) {
       this._onError(err);
     }

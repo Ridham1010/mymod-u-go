@@ -405,7 +405,7 @@ const TakeExam = () => {
       const token = await getAuthToken();
       const response = await examService.logProctoringEvent(
         token,
-        proctoringSessionRef.current._id,
+        proctoringSessionRef.current?._id,
         eventType,
         severity,
         details,
@@ -446,17 +446,19 @@ const TakeExam = () => {
     if (streamRef.current && proctoringSessionRef.current) {
       const sm = new StreamManager({
         stream: streamRef.current,
-        sessionId: proctoringSessionRef.current._id,
+        sessionId: proctoringSessionRef.current?._id,
         onClipUploaded: async (url, eventType) => {
+          console.log("TakeExam: onClipUploaded invoked for URL:", url);
           try {
             const token = await getAuthToken();
             await examService.saveViolationClip(
               token,
-              proctoringSessionRef.current._id,
+              proctoringSessionRef.current?._id,
               url,
               eventType,
               10, // duration: 5s pre + 5s post
             );
+            console.log("TakeExam: Successfully saved clip to backend!");
           } catch (err) {
             console.error("Failed to save violation clip:", err);
           }
