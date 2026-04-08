@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { examService } from "../services/examService";
 import "./Submissions.css";
 
 const MySubmissions = () => {
-  const { getAuthToken } = useAuth();
+  const { userProfile, logout, getAuthToken } = useAuth();
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +36,6 @@ const MySubmissions = () => {
       setSelectedSubmission(data.submission);
     } catch (error) {
       console.error("Error fetching submission details:", error);
-      // Fall back to using the list data which already has questions
       setSelectedSubmission(submission);
     } finally {
       setDetailLoading(null);
@@ -45,6 +44,11 @@ const MySubmissions = () => {
 
   const handleCloseModal = () => {
     setSelectedSubmission(null);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
   };
 
   const getStatusConfig = (status) => {
@@ -63,10 +67,8 @@ const MySubmissions = () => {
     return configs[status] || { label: status, color: "#6b7280", bg: "#f3f4f6" };
   };
 
-  /** Determine if correct answer should be shown */
   const canShowCorrectAnswer = (submission) => {
     const settings = submission.examId?.settings;
-    // Default is true — only hide if explicitly set to false
     return settings?.showResultsImmediately !== false;
   };
 
@@ -81,21 +83,26 @@ const MySubmissions = () => {
 
   return (
     <div className="ms-page">
-      {/* ── Header ── */}
-      <div className="ms-header">
-        <div>
-          <h1>My Submissions</h1>
-          <p className="ms-header-subtitle">
-            Review your exam answers and scores
-          </p>
-        </div>
+      {/* ── Header (Matches Dashboard & CreateExam) ── */}
+      <header className="ms-header">
+        <Link to="/dashboard" className="ms-header-brand">MOD<span>-U-GO</span></Link>
+        <span className="ms-header-center">My Submissions</span>
+        
         <button onClick={() => navigate("/dashboard")} className="ms-btn-back">
-          ← Back to Dashboard
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 5l-7 7 7 7" />
+          </svg>
+          Back to Dashboard
         </button>
-      </div>
+      </header>
 
       {/* ── Content ── */}
       <div className="ms-content">
+        <div className="ms-page-header">
+          <h1>Exam Submissions</h1>
+          <p>Review your past exam answers and scores</p>
+        </div>
+
         {submissions.length === 0 ? (
           <div className="ms-empty">
             <div className="ms-empty-icon">📝</div>
@@ -115,9 +122,18 @@ const MySubmissions = () => {
               return (
                 <div key={submission._id} className="ms-card">
                   <div className="ms-card-top">
-                    <h3 className="ms-card-title">
-                      {submission.examId?.title || "Exam"}
-                    </h3>
+                    <div className="ms-title-group">
+                      <h3 className="ms-card-title">
+                        {submission.examId?.title || "Exam"}
+                      </h3>
+                      {submission.examId?.description && (
+                        <p className="ms-card-desc">
+                          {submission.examId.description.length > 45 
+                            ? submission.examId.description.substring(0, 45) + "..." 
+                            : submission.examId.description}
+                        </p>
+                      )}
+                    </div>
                     <span
                       className="ms-status-badge"
                       style={{
@@ -130,66 +146,65 @@ const MySubmissions = () => {
                     </span>
                   </div>
 
-                  {submission.examId?.description && (
-                    <p className="ms-card-desc">
-                      {submission.examId.description}
-                    </p>
-                  )}
+                  <div className="ms-card-divider" />
 
                   <div className="ms-card-stats">
                     {submission.status === "grading" ? (
                       <div className="ms-stat-row grading-msg">
-                        ⏳ Your answers are being evaluated by AI. Check back
-                        shortly.
+                        ⏳ Your answers are being evaluated by AI. Check back shortly.
                       </div>
                     ) : submission.status === "partially_graded" ? (
                       <div className="ms-stat-row partial-msg">
-                        Score so far: {submission.score}/{submission.maxScore} (
-                        {submission.percentage}%) — Some answers pending review.
+                        Base Score: {submission.score}/{submission.maxScore} (
+                        {submission.percentage}%) — Short answers pending review.
                       </div>
                     ) : (
                       <>
                         <div className="ms-stat">
-                          <span className="ms-stat-label">Score</span>
                           <span
                             className={`ms-stat-value ${submission.percentage >= 50 ? "pass" : "fail"}`}
                           >
                             {submission.score}/{submission.maxScore}
                           </span>
+                          <span className="ms-stat-label">Score</span>
                         </div>
                         <div className="ms-stat">
-                          <span className="ms-stat-label">Percentage</span>
                           <span
                             className={`ms-stat-value ${submission.percentage >= 50 ? "pass" : "fail"}`}
                           >
                             {submission.percentage}%
                           </span>
+                          <span className="ms-stat-label">Percent</span>
                         </div>
                       </>
                     )}
                     <div className="ms-stat">
-                      <span className="ms-stat-label">Questions</span>
                       <span className="ms-stat-value">
                         {submission.answers?.length || 0}
                       </span>
+                      <span className="ms-stat-label">Q's</span>
                     </div>
                     <div className="ms-stat">
-                      <span className="ms-stat-label">Submitted</span>
-                      <span className="ms-stat-value small">
+                      <span className="ms-stat-value">
                         {submission.submittedAt
-                          ? new Date(submission.submittedAt).toLocaleDateString()
+                          ? new Date(submission.submittedAt).toLocaleDateString([], { month: 'short', day: 'numeric'})
                           : "—"}
                       </span>
+                      <span className="ms-stat-label">Date</span>
                     </div>
                   </div>
 
-                  <button
-                    className="ms-btn-view"
-                    onClick={() => handleViewDetails(submission)}
-                    disabled={detailLoading === submission._id}
-                  >
-                    {detailLoading === submission._id ? "Loading…" : "View Questions & Answers"}
-                  </button>
+                  <div className="ms-card-divider" />
+
+                  <div className="ms-card-footer">
+                    <button
+                      className="ms-btn-view"
+                      onClick={() => handleViewDetails(submission)}
+                      disabled={detailLoading === submission._id}
+                    >
+                      {detailLoading === submission._id ? "Loading…" : "View Details"}
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -197,16 +212,13 @@ const MySubmissions = () => {
         )}
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════
-          SUBMISSION DETAIL MODAL
-          ═══════════════════════════════════════════════════════════ */}
+      {/* ── Detail Modal ── */}
       {selectedSubmission && (
         <div className="ms-modal-overlay" onClick={handleCloseModal}>
           <div
             className="ms-modal"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
             <div className="ms-modal-header">
               <div>
                 <h2>{selectedSubmission.examId?.title || "Exam"}</h2>
@@ -225,29 +237,28 @@ const MySubmissions = () => {
                     <span
                       className={`ms-score-display ${selectedSubmission.percentage >= 50 ? "pass" : "fail"}`}
                     >
-                      {selectedSubmission.score}/{selectedSubmission.maxScore} (
+                      {selectedSubmission.score} / {selectedSubmission.maxScore} (
                       {selectedSubmission.percentage}%)
                     </span>
                   )}
                 </div>
               </div>
               <button onClick={handleCloseModal} className="ms-btn-close">
-                ✕
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="ms-modal-body">
-              {/* Info banner if results are hidden */}
               {!canShowCorrectAnswer(selectedSubmission) && (
                 <div className="ms-info-banner">
                   <span className="ms-info-icon">ℹ️</span>
-                  Your teacher has not released the answer key yet. You can see
-                  your answers but not the correct answers.
+                  Your teacher has not released the right answers yet.
                 </div>
               )}
 
-              {/* Questions & Answers */}
               <div className="ms-questions-list">
                 {(
                   selectedSubmission.examId?.questions || []
@@ -264,7 +275,6 @@ const MySubmissions = () => {
                       key={question._id || index}
                       className={`ms-question-card ${showCorrect ? (isCorrect ? "correct" : "incorrect") : ""}`}
                     >
-                      {/* Question header */}
                       <div className="ms-q-header">
                         <div className="ms-q-header-left">
                           <span className="ms-q-number">Q{index + 1}</span>
@@ -276,15 +286,13 @@ const MySubmissions = () => {
                           className={`ms-q-marks ${showCorrect ? (isCorrect ? "correct" : "incorrect") : ""}`}
                         >
                           {showCorrect
-                            ? `${awarded}/${question.points} pt${question.points !== 1 ? "s" : ""}`
-                            : `${question.points} pt${question.points !== 1 ? "s" : ""}`}
+                            ? `${awarded} / ${question.points} pts`
+                            : `${question.points} pts`}
                         </span>
                       </div>
 
-                      {/* Question text */}
                       <p className="ms-q-text">{question.question}</p>
 
-                      {/* Answer comparison */}
                       <div
                         className={`ms-answer-grid ${showCorrect ? "" : "single"}`}
                       >
@@ -308,19 +316,18 @@ const MySubmissions = () => {
                         )}
                       </div>
 
-                      {/* Grading method indicator */}
                       {answer?.gradingMethod && showCorrect && (
                         <div className="ms-grading-method">
                           {answer.gradingMethod === "manual" && (
                             <span className="ms-gm manual">
-                              ✎ Manually graded by teacher
+                              ✎ Manually graded
                             </span>
                           )}
                           {answer.gradingMethod === "slm_semantic" && (
                             <span className="ms-gm ai">
                               🤖 AI evaluated
                               {answer.slmScore !== null &&
-                                ` · Similarity: ${(answer.slmScore * 100).toFixed(0)}%`}
+                                ` · ${Math.round(answer.slmScore * 100)}% match`}
                             </span>
                           )}
                           {answer.gradingMethod === "exact_match" && (
@@ -331,7 +338,6 @@ const MySubmissions = () => {
                         </div>
                       )}
 
-                      {/* Explanation if available */}
                       {showCorrect && question.explanation && (
                         <div className="ms-explanation">
                           <strong>Explanation:</strong> {question.explanation}
@@ -342,19 +348,17 @@ const MySubmissions = () => {
                 })}
               </div>
 
-              {/* Submission metadata */}
               <div className="ms-submission-footer">
                 <p>
-                  <strong>Submitted:</strong>{" "}
+                  <strong>Submitted On:</strong>{" "}
                   {selectedSubmission.submittedAt
                     ? new Date(selectedSubmission.submittedAt).toLocaleString()
                     : "Not submitted"}
                 </p>
                 {selectedSubmission.reviewedBy && (
                   <p>
-                    <strong>Reviewed by:</strong>{" "}
-                    {selectedSubmission.reviewedBy?.name || "Teacher"} on{" "}
-                    {new Date(selectedSubmission.reviewedAt).toLocaleString()}
+                    <strong>Reviewed By:</strong>{" "}
+                    {selectedSubmission.reviewedBy?.name || "Teacher"}
                   </p>
                 )}
                 {selectedSubmission.reviewNotes && (

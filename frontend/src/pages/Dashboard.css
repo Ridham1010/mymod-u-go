@@ -1,150 +1,177 @@
-/* ── Dashboard ────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   DASHBOARD — SaaS Design System
+   Primary: #5A82A5  |  BG: #F8F9FA  |  Card: #FFFFFF
+   ═══════════════════════════════════════════════════════════ */
 
+/* ── Page Shell ─────────────────────────────────────────── */
 .dashboard {
   min-height: 100vh;
-  background: #e8ecf4;
+  background: #F8F9FA;
 }
 
-/* ── Header ──────────────────────────────────────────────── */
+/* ── Loading ─────────────────────────────────────────────── */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-size: 15px;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+/* ════════════════════════════════════════════════════════════
+   TOP NAVIGATION BAR
+   ════════════════════════════════════════════════════════════ */
 .dashboard-header {
-  background: #dce1ec;
-  padding: 12px 36px;
+  background: #FFFFFF;
+  padding: 0 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  border-bottom: 1px solid #ccd3e0;
+  height: 60px;
+  border-bottom: 1px solid #E5E7EB;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
+/* ── Brand ───────────────────────────────────────────────── */
 .brand {
   margin: 0;
-  color: #3b4a6b;
-  font-size: 20px;
-  font-weight: 700;
-  font-style: italic;
-  letter-spacing: 0.5px;
+  color: #1F2937;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-/* ── Nav ─────────────────────────────────────────────────── */
+.brand span {
+  color: #5A82A5;
+}
+
+/* ── Centered Nav ────────────────────────────────────────── */
 .header-nav {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 2px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .nav-link {
-  padding: 8px 16px;
-  color: #5a6a8a;
+  padding: 7px 14px;
+  color: #6B7280;
   text-decoration: none;
-  border-radius: 8px;
-  transition: all 0.15s;
+  border-radius: 6px;
+  transition: all 0.15s ease;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
-  background: rgba(0, 0, 0, 0.06);
-  color: #2d3748;
+  background: #F3F4F6;
+  color: #1F2937;
 }
 
 .nav-link.active {
-  background: #2d3748;
-  color: #fff;
+  background: #EEF3F8;
+  color: #5A82A5;
+  font-weight: 600;
 }
 
-/* ── User area ───────────────────────────────────────────── */
+/* ── User Area (right side) ──────────────────────────────── */
 .header-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .user-avatar {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #a0aec0;
+  background: #5A82A5;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .user-name {
   font-weight: 500;
   color: #374151;
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .user-role {
   padding: 3px 10px;
-  border-radius: 12px;
+  border-radius: 9999px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.role-student {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-.role-teacher {
-  background: #dcfce7;
-  color: #16a34a;
-}
-.role-proctor {
-  background: #fef3c7;
-  color: #d97706;
-}
-.role-admin {
-  background: #fce7f3;
-  color: #db2777;
-}
+.role-student  { background: #DBEAFE; color: #1D4ED8; }
+.role-teacher  { background: #0F766E; color: #FFFFFF; }
+.role-proctor  { background: #FEF3C7; color: #92400E; }
+.role-admin    { background: #FCE7F3; color: #9D174D; }
 
 .btn-logout {
-  padding: 7px 16px;
+  padding: 6px 14px;
   background: #fff;
-  color: #5a6a8a;
-  border: 1px solid #c5cdd8;
-  border-radius: 8px;
+  color: #6B7280;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 12px;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .btn-logout:hover {
-  background: #fee2e2;
-  color: #dc2626;
-  border-color: #fecaca;
+  background: #FEF2F2;
+  color: #DC2626;
+  border-color: #FECACA;
 }
 
-/* ── Content ─────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════
+   PAGE CONTENT WRAPPER
+   ════════════════════════════════════════════════════════════ */
 .dashboard-content {
-  padding: 28px 40px;
+  padding: 32px 40px;
   max-width: 1400px;
   margin: 0 auto;
 }
 
 /* ── Notifications ───────────────────────────────────────── */
 .notifications-banner {
-  background: #fff;
-  border: 1px solid #dce1ec;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
   border-radius: 12px;
   padding: 16px 20px;
-  margin-bottom: 22px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  margin-bottom: 24px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
 }
 
 .notifications-banner h3 {
   margin: 0 0 12px;
-  color: #374151;
-  font-size: 14px;
+  color: #1F2937;
+  font-size: 13px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .notification-list {
@@ -154,69 +181,77 @@
 }
 
 .notification-item {
-  background: #f8f9fc;
+  background: #F9FAFB;
   padding: 10px 14px;
   border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #F3F4F6;
 }
 
-.notification-item.priority-high {
-  border-left: 3px solid #dc2626;
-}
-.notification-item.priority-medium {
-  border-left: 3px solid #d97706;
-}
-.notification-item.priority-low {
-  border-left: 3px solid #16a34a;
-}
+.notification-item.priority-high   { border-left: 3px solid #EF4444; }
+.notification-item.priority-medium { border-left: 3px solid #F59E0B; }
+.notification-item.priority-low    { border-left: 3px solid #10B981; }
 
 .notification-title {
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   min-width: 120px;
   font-size: 13px;
 }
 
 .notification-message {
   flex: 1;
-  color: #6b7280;
+  color: #6B7280;
   font-size: 13px;
 }
 
 .btn-dismiss {
   background: transparent;
   border: none;
-  color: #9ca3af;
+  color: #9CA3AF;
   cursor: pointer;
   font-size: 14px;
   padding: 4px 8px;
   border-radius: 4px;
   transition: all 0.15s;
+  line-height: 1;
 }
 
 .btn-dismiss:hover {
   color: #374151;
-  background: #f3f4f6;
+  background: #F3F4F6;
 }
 
-/* ── Section header ──────────────────────────────────────── */
+/* ── Page Header Row ─────────────────────────────────────── */
 .dashboard-header-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 22px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
   gap: 12px;
 }
 
+.page-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
 .dashboard-header-section h2 {
   margin: 0;
-  color: #1f2937;
+  color: #1F2937;
   font-size: 22px;
   font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.exam-count-badge {
+  font-size: 13px;
+  color: #6B7280;
+  font-weight: 500;
 }
 
 .header-buttons {
@@ -224,154 +259,169 @@
   gap: 8px;
 }
 
-/* ── Buttons ─────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════
+   BUTTONS
+   ════════════════════════════════════════════════════════════ */
 .btn-primary {
-  padding: 9px 20px;
-  background: #2d3748;
+  padding: 9px 18px;
+  background: #5A82A5;
   color: #fff;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
   font-size: 13px;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .btn-primary:hover {
-  background: #1a202c;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: #4A7699;
+  box-shadow: 0 4px 12px rgba(90, 130, 165, 0.30);
+  transform: translateY(-1px);
 }
 
 .btn-primary:disabled {
-  background: #d1d5db;
+  background: #D1D5DB;
   cursor: not-allowed;
   box-shadow: none;
+  transform: none;
 }
 
 .btn-secondary {
-  padding: 7px 18px;
+  padding: 8px 16px;
   background: #fff;
   color: #374151;
-  border: 1px solid #c5cdd8;
+  border: 1px solid #E5E7EB;
   border-radius: 8px;
   cursor: pointer;
-  font-weight: 600;
-  font-size: 12px;
-  transition: all 0.15s;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .btn-secondary:hover {
-  background: #f3f5f9;
-  border-color: #9ca3af;
+  background: #F9FAFB;
+  border-color: #D1D5DB;
+  color: #1F2937;
 }
 
-/* ── Empty state ─────────────────────────────────────────── */
+/* ── Empty State ─────────────────────────────────────────── */
 .no-exams {
-  background: #fff;
-  padding: 60px 40px;
-  border-radius: 14px;
+  background: #FFFFFF;
+  padding: 72px 40px;
+  border-radius: 12px;
   text-align: center;
-  border: 1px solid #dce1ec;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+}
+
+.no-exams-icon {
+  width: 56px;
+  height: 56px;
+  background: #EEF3F8;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
 }
 
 .no-exams p {
-  color: #6b7280;
+  color: #6B7280;
   font-size: 15px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
-/* ── Exams grid ──────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════
+   EXAM GRID
+   ════════════════════════════════════════════════════════════ */
 .exams-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
 }
 
-/* ── Exam card ───────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════
+   EXAM CARD
+   ════════════════════════════════════════════════════════════ */
 .exam-card {
-  background: #fff;
-  padding: 22px 24px 16px;
-  border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: all 0.2s;
-  border: 1px solid #dce1ec;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+  border: 1px solid #E5E7EB;
   display: flex;
   flex-direction: column;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
 }
 
 .exam-card:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08), 0 4px 10px -2px rgba(0,0,0,0.04);
   transform: translateY(-2px);
 }
 
-.exam-card.status-active {
-  border-left: 4px solid #16a34a;
-}
-
-.exam-card.status-upcoming {
-  border-left: 4px solid #d97706;
-}
-
-.exam-card.status-ended {
-  border-left: 4px solid #c5cdd8;
-}
-
-/* Card header */
+/* ── Card Header ─────────────────────────────────────────── */
 .exam-card-header {
+  padding: 18px 18px 14px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 6px;
+  gap: 10px;
+}
+
+.exam-title-group {
+  flex: 1;
+  min-width: 0;
 }
 
 .exam-card-header h3 {
-  margin: 0;
-  color: #1f2937;
-  font-size: 17px;
+  margin: 0 0 3px;
+  color: #1F2937;
+  font-size: 1rem;
   font-weight: 700;
-  flex: 1;
   line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+.exam-course-code {
+  font-size: 0.8rem;
+  color: #6B7280;
+  font-weight: 400;
+}
+
+/* ── Status Badges (pill) ────────────────────────────────── */
 .exam-status {
-  padding: 4px 12px;
-  border-radius: 14px;
+  padding: 3px 10px;
+  border-radius: 9999px;
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
   flex-shrink: 0;
-  margin-left: 10px;
+  letter-spacing: 0.2px;
 }
 
-.exam-status.status-active {
-  background: #dcfce7;
-  color: #166534;
-}
-.exam-status.status-upcoming {
-  background: #fef9c3;
-  color: #854d0e;
-}
-.exam-status.status-ended {
-  background: #f0f1f4;
-  color: #6b7280;
+.exam-status.status-active   { background: #D1FAE5; color: #065F46; }
+.exam-status.status-upcoming { background: #FEF3C7; color: #92400E; }
+.exam-status.status-ended    { background: #FADBD8; color: #922B21; }
+
+/* ── Card Divider ────────────────────────────────────────── */
+.card-divider {
+  height: 1px;
+  background: #E5E7EB;
+  margin: 0 18px;
 }
 
-/* Description */
-.exam-description {
-  color: #6b7280;
-  margin-bottom: 14px;
-  font-size: 13px;
-  line-height: 1.5;
-  min-height: 0;
-}
-
-/* ── Details grid (icon + label + value columns) ─────────── */
+/* ── Stats Section ───────────────────────────────────────── */
 .exam-details {
-  border-top: 1px solid #eef0f4;
-  padding: 16px 0 14px;
+  padding: 14px 18px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
   text-align: center;
 }
 
@@ -379,55 +429,56 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
+  padding: 6px 4px;
 }
 
 .detail-icon {
-  width: 22px;
-  height: 22px;
-  color: #9ca3af;
+  width: 18px;
+  height: 18px;
+  color: #5A82A5;
   margin-bottom: 2px;
-}
-
-.detail-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #6b7280;
-  letter-spacing: 0.2px;
+  flex-shrink: 0;
 }
 
 .detail-value {
-  font-size: 12px;
-  color: #1f2937;
+  font-size: 0.82rem;
+  color: #1F2937;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
-/* ── Card footer (mode + actions) ────────────────────────── */
+.detail-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #6B7280;
+  letter-spacing: 0.1px;
+}
+
+/* ── Card Footer ─────────────────────────────────────────── */
 .exam-card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 12px;
-  border-top: 1px solid #eef0f4;
+  padding: 12px 18px 16px;
   margin-top: auto;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .exam-mode {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #6b7280;
+  gap: 5px;
+  font-size: 11.5px;
+  color: #6B7280;
   font-weight: 500;
 }
 
 .mode-icon {
-  width: 16px;
-  height: 16px;
-  color: #9ca3af;
+  width: 14px;
+  height: 14px;
+  color: #6B7280;
+  flex-shrink: 0;
 }
 
 .exam-actions {
@@ -436,40 +487,55 @@
   margin-left: auto;
 }
 
-.exam-actions .btn-secondary {
-  padding: 6px 16px;
-  font-size: 12px;
-}
-
+/* Override btn sizes inside card footer */
 .exam-actions .btn-primary {
-  padding: 6px 16px;
+  padding: 7px 14px;
   font-size: 12px;
+  border-radius: 6px;
+  background: #5A82A5;
 }
 
-/* ── Loading ─────────────────────────────────────────────── */
-.loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  font-size: 16px;
-  color: #6b7280;
+.exam-actions .btn-primary:hover {
+  background: #4A7699;
+  transform: none;
 }
 
-/* ── Responsive ──────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .dashboard-header {
-    padding: 12px 16px;
+.exam-actions .btn-secondary {
+  padding: 6px 14px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ════════════════════════════════════════════════════════════ */
+@media (max-width: 1280px) {
+  .exams-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .exams-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .header-nav {
-    order: 3;
-    width: 100%;
-    justify-content: center;
+    position: static;
+    transform: none;
   }
 
+  .dashboard-header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 12px 20px;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 640px) {
   .dashboard-content {
-    padding: 16px;
+    padding: 20px 16px;
   }
 
   .exams-grid {
@@ -478,5 +544,9 @@
 
   .exam-details {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .header-nav {
+    display: none;
   }
 }
