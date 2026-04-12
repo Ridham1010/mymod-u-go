@@ -440,4 +440,88 @@ export const examService = {
     );
     return response.data;
   },
+
+  // ─── Classroom operations ──────────────────────────────────────────────
+  createClassroom: async (token, data) => {
+    const response = await api.post("/classrooms", data, authHeader(token));
+    return response.data;
+  },
+
+  getClassrooms: async (token) => {
+    const response = await api.get("/classrooms", authHeader(token));
+    return response.data;
+  },
+
+  getEnrolledClassrooms: async (token) => {
+    const response = await api.get("/classrooms/enrolled", authHeader(token));
+    return response.data;
+  },
+
+  getClassroom: async (token, classroomId) => {
+    const response = await api.get(
+      `/classrooms/${classroomId}`,
+      authHeader(token),
+    );
+    return response.data;
+  },
+
+  enrollInClassroom: async (token, classroomId) => {
+    const response = await api.post(
+      `/classrooms/${classroomId}/enroll`,
+      {},
+      authHeader(token),
+    );
+    return response.data;
+  },
+
+  enrollByCode: async (token, code) => {
+    const response = await api.post(
+      "/classrooms/enroll-code",
+      { code },
+      authHeader(token),
+    );
+    return response.data;
+  },
+
+  unenrollFromClassroom: async (token, classroomId) => {
+    const response = await api.delete(
+      `/classrooms/${classroomId}/unenroll`,
+      authHeader(token),
+    );
+    return response.data;
+  },
+
+  updateClassroom: async (token, classroomId, data) => {
+    const response = await api.put(
+      `/classrooms/${classroomId}`,
+      data,
+      authHeader(token),
+    );
+    return response.data;
+  },
+
+  deleteClassroom: async (token, classroomId) => {
+    const response = await api.delete(
+      `/classrooms/${classroomId}`,
+      authHeader(token),
+    );
+    return response.data;
+  },
+
+  getClassroomExams: async (token, classroomId) => {
+    const response = await api.get(
+      `/classrooms/${classroomId}/exams`,
+      authHeader(token),
+    );
+    return response.data;
+  },
+
+  getClassroomStudents: async (token, classroomId) => {
+    const response = await api.get(
+      `/classrooms/${classroomId}/students`,
+      authHeader(token),
+    );
+    return response.data;
+  },
 };
+

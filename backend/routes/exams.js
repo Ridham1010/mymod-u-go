@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Exam = require("../models/Exam");
 const User = require("../models/User");
+const Classroom = require("../models/Classroom");
 const verifyFirebaseToken = require("../middleware/auth");
 
 // Create a new exam (Teacher only)
@@ -15,8 +16,22 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
         .json({ message: "Only teachers can create exams" });
     }
 
-    const { title, description, questions, scheduledAt, duration, settings } =
+    const { title, description, questions, scheduledAt, duration, settings, classroomId } =
       req.body;
+
+    // If classroomId provided, verify teacher owns the classroom
+    if (classroomId) {
+      const classroom = await Classroom.findById(classroomId);
+      if (!classroom || !classroom.isActive) {
+        return res.status(404).json({ message: "Classroom not found" });
+      }
+      if (
+        user.role === "teacher" &&
+        classroom.teacherId.toString() !== user._id.toString()
+      ) {
+        return res.status(403).json({ message: "You do not own this classroom" });
+      }
+    }
 
     const scheduledDate = new Date(scheduledAt);
     const endTime = new Date(scheduledDate.getTime() + duration * 60000);
@@ -25,6 +40,7 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
       title,
       description,
       teacherId: user._id,
+      classroomId: classroomId || null,
       questions,
       scheduledAt: scheduledDate,
       duration,
@@ -58,9 +74,19 @@ router.get("/", verifyFirebaseToken, async (req, res) => {
     } else if (user.role === "proctor") {
       exams = await Exam.find({ isActive: true }).sort({ scheduledAt: -1 });
     } else {
-      // Students see all active exams (both upcoming and current)
+      // Students see exams from enrolled classrooms + unassigned (legacy) exams
+      const enrolledClassrooms = await Classroom.find({
+        students: user._id,
+        isActive: true,
+      }).select("_id");
+      const enrolledIds = enrolledClassrooms.map((c) => c._id);
+
       exams = await Exam.find({
         isActive: true,
+        $or: [
+          { classroomId: { $in: enrolledIds } },
+          { classroomId: null },
+        ],
       }).sort({ scheduledAt: -1 });
     }
 

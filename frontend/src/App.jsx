@@ -15,6 +15,8 @@ import MySubmissions from "./pages/MySubmissions";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProctorDashboard from "./pages/ProctorDashboard";
 import ExamSubmissions from "./pages/ExamSubmissions";
+import Classrooms from "./pages/Classrooms";
+import ClassroomDetail from "./pages/ClassroomDetail";
 import "./App.css";
 
 const PrivateRoute = ({ children }) => {
@@ -129,6 +131,22 @@ function App() {
               <RoleRoute allowedRoles={["proctor", "admin"]}>
                 <ProctorDashboard />
               </RoleRoute>
+            }
+          />
+          <Route
+            path="/classrooms"
+            element={
+              <PrivateRoute>
+                <Classrooms />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/classroom/:classroomId"
+            element={
+              <PrivateRoute>
+                <ClassroomDetail />
+              </PrivateRoute>
             }
           />
           {/* Catch all route */}

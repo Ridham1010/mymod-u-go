@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { examService } from "../services/examService";
 import "./CreateExam.css";
@@ -17,6 +17,8 @@ const CreateExam = () => {
   const { getAuthToken } = useAuth();
   const navigate = useNavigate();
   const { examId } = useParams();
+  const [searchParams] = useSearchParams();
+  const classroomId = searchParams.get("classroomId");
   const isEditing = !!examId;
 
   const [title, setTitle] = useState("");
@@ -192,6 +194,7 @@ const CreateExam = () => {
         title, description,
         scheduledAt: new Date(scheduledAt).toISOString(),
         duration, settings,
+        classroomId: classroomId || null,
         questions: questions.map((q) => ({
           type: q.type,
           question: q.question,
@@ -207,7 +210,12 @@ const CreateExam = () => {
       } else {
         await examService.createExam(token, examData);
       }
-      navigate("/dashboard");
+      // Navigate back to classroom if we came from one, otherwise dashboard
+      if (classroomId) {
+        navigate(`/classroom/${classroomId}`);
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       console.error("Error saving exam:", err);
       setError("Error saving exam: " + (err.response?.data?.message || err.message));

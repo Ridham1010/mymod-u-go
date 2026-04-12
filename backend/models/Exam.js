@@ -64,6 +64,11 @@ const examSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  classroomId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Classroom",
+    default: null,
+  },
   questions: [questionSchema],
   scheduledAt: {
     type: Date,

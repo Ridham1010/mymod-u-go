@@ -22,7 +22,7 @@ app.use(
       callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
-  }),
+  })
 );
 app.use(bodyParser.json({ limit: "50mb" })); // Increased for screenshots
 app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
@@ -36,6 +36,7 @@ connectDB();
 // Routes
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/exams", require("./routes/exams"));
+app.use("/api/classrooms", require("./routes/classrooms"));
 app.use("/api/submissions", require("./routes/submissions"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/proctoring", require("./routes/proctoring"));
@@ -62,8 +63,8 @@ app.get("/health", (req, res) => {
 app.use((err, req, res, next) => {
   console.error("Error:", err);
   res.status(err.status || 500).json({
-    message: err.message || "Internal server error",
-    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  message: err.message || "Internal server error",
+  stack: process.env.NODE_ENV === "development" ? err.stack : undefined
   });
 });
 

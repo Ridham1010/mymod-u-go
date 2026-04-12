@@ -44,24 +44,41 @@ const ShieldIcon = () => (
 const Dashboard = () => {
   const { userProfile, logout, getAuthToken } = useAuth();
   const [exams, setExams] = useState([]);
+  const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const navigate = useNavigate();
 
+  const isTeacher = userProfile?.role === "teacher" || userProfile?.role === "admin";
+
   useEffect(() => {
     fetchExams();
     fetchNotifications();
+    fetchClassrooms();
   }, []);
 
   const fetchExams = async () => {
     try {
       const token = await getAuthToken();
       const data = await examService.getExams(token);
-      setExams(data.exams);
+      setExams(data.exams || []);
     } catch (error) {
       console.error("Error fetching exams:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchClassrooms = async () => {
+    try {
+      const token = await getAuthToken();
+      if (!token) return;
+      const data = isTeacher
+        ? await examService.getClassrooms(token)
+        : await examService.getEnrolledClassrooms(token);
+      setClassrooms(data.classrooms || []);
+    } catch (error) {
+      console.error("Error fetching classrooms:", error);
     }
   };
 
@@ -95,7 +112,7 @@ const Dashboard = () => {
   const getExamStatus = (exam) => {
     const now = new Date();
     const scheduledAt = new Date(exam.scheduledAt);
-    const endTime = new Date(scheduledAt.getTime() + exam.duration * 60000);
+    const endTime = new Date(exam.endTime || scheduledAt.getTime() + exam.duration * 60000);
 
     if (now < scheduledAt) {
       return { status: "upcoming", label: "Upcoming", className: "status-upcoming" };
@@ -106,6 +123,19 @@ const Dashboard = () => {
     }
   };
 
+  // ─── Derived data ─────────────────────────────────────────────────────────
+  // Unassigned exams: exams that do NOT belong to any classroom
+  const unassignedExams = exams.filter((e) => !e.classroomId);
+
+  // Current exams (for students): exams within their active time window
+  // This includes BOTH unassigned exams AND exams from enrolled classrooms
+  const currentExams = exams.filter((exam) => {
+    const now = new Date();
+    const scheduledAt = new Date(exam.scheduledAt);
+    const endTime = new Date(exam.endTime || scheduledAt.getTime() + exam.duration * 60000);
+    return now >= scheduledAt && now <= endTime;
+  });
+
   const pageTitle =
     userProfile?.role === "teacher" ? "My Exams"
     : userProfile?.role === "admin" ? "All Exams"
@@ -115,6 +145,21 @@ const Dashboard = () => {
   if (loading) {
     return <div className="loading">Loading dashboard…</div>;
   }
+
+  // For teachers: show only unassigned exams on dashboard
+  // For students: show current (active-time-window) exams
+  // For proctor/admin: show all exams
+  const displayExams = isTeacher
+    ? unassignedExams
+    : userProfile?.role === "student"
+      ? currentExams
+      : exams;
+
+  const examsTitle = isTeacher
+    ? "Unassigned Exams"
+    : userProfile?.role === "student"
+      ? "Current Exams"
+      : pageTitle;
 
   return (
     <div className="dashboard">
@@ -127,6 +172,7 @@ const Dashboard = () => {
         {/* Center — nav links */}
         <nav className="header-nav">
           <Link to="/dashboard" className="nav-link active">Dashboard</Link>
+          <Link to="/classrooms" className="nav-link">Classrooms</Link>
           {userProfile?.role === "student" && (
             <Link to="/my-submissions" className="nav-link">My Submissions</Link>
           )}
@@ -182,16 +228,54 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Page header row */}
+        {/* ─── My Classrooms Quick Access ─────────────────── */}
+        {classrooms.length > 0 && (
+          <div className="classrooms-quick-section">
+            <div className="dashboard-header-section">
+              <div className="page-title-group">
+                <h2>My Classrooms</h2>
+                <span className="exam-count-badge">{classrooms.length} classroom{classrooms.length !== 1 ? "s" : ""}</span>
+              </div>
+              <div className="header-buttons">
+                <button onClick={() => navigate("/classrooms")} className="btn-secondary">
+                  View All
+                </button>
+                {isTeacher && (
+                  <button onClick={() => navigate("/classrooms")} className="btn-primary">
+                    + Create Classroom
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="classrooms-quick-grid">
+              {classrooms.slice(0, 4).map((c) => (
+                <div
+                  key={c._id}
+                  className="classroom-quick-card"
+                  onClick={() => navigate(`/classroom/${c._id}`)}
+                >
+                  <div className="classroom-quick-name">{c.name}</div>
+                  {c.subject && <div className="classroom-quick-subject">{c.subject}</div>}
+                  <div className="classroom-quick-meta">
+                    <span>{c.studentCount ?? c.students?.length ?? 0} students</span>
+                    <span>{c.examCount ?? 0} exams</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Exams Section ──────────────────────────────── */}
         <div className="dashboard-header-section">
           <div className="page-title-group">
-            <h2>{pageTitle}</h2>
-            {exams.length > 0 && (
-              <span className="exam-count-badge">{exams.length} exam{exams.length !== 1 ? "s" : ""}</span>
+            <h2>{examsTitle}</h2>
+            {displayExams.length > 0 && (
+              <span className="exam-count-badge">{displayExams.length} exam{displayExams.length !== 1 ? "s" : ""}</span>
             )}
           </div>
           <div className="header-buttons">
-            {(userProfile?.role === "teacher" || userProfile?.role === "admin") && (
+            {isTeacher && (
               <button onClick={() => navigate("/create-exam")} className="btn-primary">
                 + Create New Exam
               </button>
@@ -205,24 +289,31 @@ const Dashboard = () => {
         </div>
 
         {/* Empty state */}
-        {exams.length === 0 ? (
+        {displayExams.length === 0 ? (
           <div className="no-exams">
             <div className="no-exams-icon">📋</div>
             <p>
-              {userProfile?.role === "teacher"
-                ? "No exams created yet. Create your first exam!"
-                : "No active exams available at the moment."}
+              {isTeacher
+                ? "No unassigned exams. All your exams are inside classrooms — go to Classrooms to manage them."
+                : userProfile?.role === "student"
+                  ? "No exams are currently active. Check your classrooms for upcoming exams."
+                  : "No active exams available at the moment."}
             </p>
-            {(userProfile?.role === "teacher" || userProfile?.role === "admin") && (
+            {isTeacher && (
               <button onClick={() => navigate("/create-exam")} className="btn-primary">
-                Create Your First Exam
+                Create an Exam
+              </button>
+            )}
+            {userProfile?.role === "student" && (
+              <button onClick={() => navigate("/classrooms")} className="btn-primary">
+                Browse Classrooms
               </button>
             )}
           </div>
         ) : (
           /* ── Exam Cards Grid ─────────────────────────────── */
           <div className="exams-grid">
-            {exams.map((exam) => {
+            {displayExams.map((exam) => {
               const examStatus = getExamStatus(exam);
               return (
                 <div key={exam._id} className="exam-card">
@@ -316,12 +407,12 @@ const Dashboard = () => {
                         <button
                           onClick={() => navigate(`/take-exam/${exam._id}`)}
                           className="btn-primary"
-                          disabled={examStatus.status === "ended"}
+                          disabled={examStatus.status === "ended" || examStatus.status === "upcoming"}
                         >
                           {examStatus.status === "active"
                             ? "Take Exam Now"
                             : examStatus.status === "upcoming"
-                              ? "View Details"
+                              ? `Starts ${new Date(exam.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                               : "Exam Ended"}
                         </button>
                       )}
