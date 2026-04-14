@@ -1040,7 +1040,6 @@ const TakeExam = () => {
     return (
       <div className="exam-locked-overlay">
         <div className="locked-content">
-          <div className="locked-icon">🔒</div>
           <h1>Exam Locked</h1>
           <p className="locked-reason">{lockReason}</p>
           <div className="locked-details">
@@ -1093,10 +1092,10 @@ const TakeExam = () => {
           </div>
           {webcamEnabled && faceStatus !== "idle" && (
             <div style={{ fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "4px", fontWeight: 600 }}>
-              {faceStatus === "ok" && <span style={{ color: "#22c55e" }}>🟢 Face OK</span>}
-              {faceStatus === "no_face" && <span style={{ color: "#ef4444" }}>🔴 No Face!</span>}
-              {faceStatus === "multiple_faces" && <span style={{ color: "#ef4444" }}>🔴 Multiple Faces!</span>}
-              {faceStatus === "looking_away" && <span style={{ color: "#f59e0b" }}>🟡 Look at screen</span>}
+              {faceStatus === "ok" && <span style={{ color: "#22c55e" }}>Face OK</span>}
+              {faceStatus === "no_face" && <span style={{ color: "#ef4444" }}>No Face!</span>}
+              {faceStatus === "multiple_faces" && <span style={{ color: "#ef4444" }}>Multiple Faces!</span>}
+              {faceStatus === "looking_away" && <span style={{ color: "#f59e0b" }}>Look at screen</span>}
             </div>
           )}
         </div>
@@ -1104,7 +1103,6 @@ const TakeExam = () => {
 
       {focusWarning && (
         <div className="focus-warning-banner" role="alert">
-          <span className="focus-warning-icon">&#9888;</span>
           <span className="focus-warning-text">{focusWarning}</span>
           <button
             className="focus-warning-close"

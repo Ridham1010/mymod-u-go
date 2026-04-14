@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import { examService } from "../services/examService";
+import "./Dashboard.css";
 import "./Submissions.css";
 
 const MySubmissions = () => {
@@ -83,17 +84,24 @@ const MySubmissions = () => {
 
   return (
     <div className="ms-page">
-      {/* ── Header (Matches Dashboard & CreateExam) ── */}
-      <header className="ms-header">
-        <Link to="/dashboard" className="ms-header-brand">MOD<span>-U-GO</span></Link>
-        <span className="ms-header-center">My Submissions</span>
-        
-        <button onClick={() => navigate("/dashboard")} className="ms-btn-back">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 5l-7 7 7 7" />
-          </svg>
-          Back to Dashboard
-        </button>
+      {/* ─── Sticky Top Nav (same style as Dashboard) ──────── */}
+      <header className="dashboard-header">
+        <h1 className="brand">MOD<span>-U-GO</span></h1>
+        <nav className="header-nav">
+          <Link to="/dashboard" className="nav-link">Dashboard</Link>
+          <Link to="/classrooms" className="nav-link">Classrooms</Link>
+          <Link to="/my-submissions" className="nav-link active">My Submissions</Link>
+        </nav>
+        <div className="header-actions">
+          <div className="user-avatar">
+            {userProfile?.name?.charAt(0)?.toUpperCase() || "U"}
+          </div>
+          <span className="user-name">{userProfile?.name}</span>
+          <span className={`user-role role-${userProfile?.role}`}>
+            {userProfile?.role?.toUpperCase()}
+          </span>
+          <button onClick={handleLogout} className="btn-logout">Logout</button>
+        </div>
       </header>
 
       {/* ── Content ── */}
@@ -105,7 +113,6 @@ const MySubmissions = () => {
 
         {submissions.length === 0 ? (
           <div className="ms-empty">
-            <div className="ms-empty-icon">📝</div>
             <p>You haven't submitted any exams yet.</p>
             <button
               className="ms-btn-primary"
@@ -151,7 +158,7 @@ const MySubmissions = () => {
                   <div className="ms-card-stats">
                     {submission.status === "grading" ? (
                       <div className="ms-stat-row grading-msg">
-                        ⏳ Your answers are being evaluated by AI. Check back shortly.
+                        Your answers are being evaluated by AI. Check back shortly.
                       </div>
                     ) : submission.status === "partially_graded" ? (
                       <div className="ms-stat-row partial-msg">
@@ -254,7 +261,6 @@ const MySubmissions = () => {
             <div className="ms-modal-body">
               {!canShowCorrectAnswer(selectedSubmission) && (
                 <div className="ms-info-banner">
-                  <span className="ms-info-icon">ℹ️</span>
                   Your teacher has not released the right answers yet.
                 </div>
               )}
@@ -320,19 +326,19 @@ const MySubmissions = () => {
                         <div className="ms-grading-method">
                           {answer.gradingMethod === "manual" && (
                             <span className="ms-gm manual">
-                              ✎ Manually graded
+                              Manually graded
                             </span>
                           )}
                           {answer.gradingMethod === "slm_semantic" && (
                             <span className="ms-gm ai">
-                              🤖 AI evaluated
+                              AI evaluated
                               {answer.slmScore !== null &&
                                 ` · ${Math.round(answer.slmScore * 100)}% match`}
                             </span>
                           )}
                           {answer.gradingMethod === "exact_match" && (
                             <span className="ms-gm auto">
-                              ⚡ Auto-graded
+                              Auto-graded
                             </span>
                           )}
                         </div>

@@ -341,7 +341,7 @@ const Classrooms = () => {
                   {/* Student: enrolled badge or join button */}
                   {!isTeacher && (
                     classroom.isEnrolled ? (
-                      <span className="enrolled-badge">✓ Enrolled</span>
+                      <span className="enrolled-badge">Enrolled</span>
                     ) : (
                       <button
                         className="btn-enroll-card"

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { examService } from "../services/examService";
+import "./Dashboard.css";
 import "./CreateExam.css";
 
 /* ── helpers ──────────────────────────────────────────────── */
@@ -14,7 +15,7 @@ const ArrowLeftIcon = () => (
 );
 
 const CreateExam = () => {
-  const { getAuthToken } = useAuth();
+  const { getAuthToken, userProfile, logout } = useAuth();
   const navigate = useNavigate();
   const { examId } = useParams();
   const [searchParams] = useSearchParams();
@@ -58,6 +59,11 @@ const CreateExam = () => {
   useEffect(() => {
     if (isEditing) fetchExam();
   }, [examId]);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   /* ── data fetch ─────────────────────────────────────────── */
   const fetchExam = async () => {
@@ -229,21 +235,23 @@ const CreateExam = () => {
   return (
     <div className="create-exam">
 
-      {/* ─── Sticky Top Bar ─────────────────────────────────── */}
-      <header className="create-exam-topbar">
-        <Link to="/dashboard" className="brand">MOD<span>-U-GO</span></Link>
-        <span className="topbar-center">
-          {isEditing ? "Edit Exam" : "Create New Exam"}
-        </span>
-        <div className="topbar-right">
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard")}
-            className="btn-secondary"
-            style={{ display: "flex", alignItems: "center", gap: "6px" }}
-          >
-            <ArrowLeftIcon /> Back to Dashboard
-          </button>
+      {/* ─── Sticky Top Nav ─────────────────────────────────── */}
+      <header className="dashboard-header">
+        <h1 className="brand">MOD<span>-U-GO</span></h1>
+        <nav className="header-nav">
+          <Link to="/dashboard" className="nav-link">Dashboard</Link>
+          <Link to="/classrooms" className="nav-link">Classrooms</Link>
+          <Link to="/create-exam" className="nav-link active">Create Exam</Link>
+        </nav>
+        <div className="header-actions">
+          <div className="user-avatar">
+            {userProfile?.name?.charAt(0)?.toUpperCase() || "U"}
+          </div>
+          <span className="user-name">{userProfile?.name}</span>
+          <span className={`user-role role-${userProfile?.role}`}>
+            {userProfile?.role?.toUpperCase()}
+          </span>
+          <button type="button" onClick={handleLogout} className="btn-logout">Logout</button>
         </div>
       </header>
 
@@ -259,7 +267,7 @@ const CreateExam = () => {
         {/* Error */}
         {error && (
           <div className="error-message">
-            <span>⚠</span> {error}
+            {error}
           </div>
         )}
 
@@ -370,7 +378,7 @@ const CreateExam = () => {
 
             {/* Proctoring Window */}
             <div className="proctoring-panel">
-              <h3>🎥 Proctoring Window</h3>
+              <h3>Proctoring Window</h3>
               <p>Configure how long before and after the exam proctoring is active.</p>
               <div className="form-row">
                 <div className="form-group">
@@ -577,7 +585,7 @@ const CreateExam = () => {
                       required
                     />
                     <p className="ai-grading-note">
-                      🤖 Used for AI Semantic Grading. Provide a comprehensive, representative answer.
+                      Used for AI Semantic Grading. Provide a comprehensive, representative answer.
                     </p>
                   </div>
                 )}

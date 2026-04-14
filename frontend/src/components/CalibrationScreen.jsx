@@ -398,7 +398,6 @@ const CalibrationScreen = ({ onCalibrationComplete, onCalibrationFailed, token, 
 
         {status === "complete" && (
           <div className="calibration-complete">
-            <div className="success-icon">✓</div>
             <h3>Calibration Complete!</h3>
             <p>Your camera has been calibrated successfully.</p>
 

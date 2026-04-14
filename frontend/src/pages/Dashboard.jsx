@@ -291,7 +291,6 @@ const Dashboard = () => {
         {/* Empty state */}
         {displayExams.length === 0 ? (
           <div className="no-exams">
-            <div className="no-exams-icon">📋</div>
             <p>
               {isTeacher
                 ? "No unassigned exams. All your exams are inside classrooms — go to Classrooms to manage them."

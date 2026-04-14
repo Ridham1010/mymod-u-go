@@ -288,9 +288,6 @@ const ExamSubmissions = () => {
       {/* Toast notification */}
       {toast && (
         <div className={`toast-notification toast-${toast.type}`}>
-          <span className="toast-icon">
-            {toast.type === "success" ? "✓" : "✕"}
-          </span>
           {toast.message}
         </div>
       )}
@@ -422,11 +419,6 @@ const ExamSubmissions = () => {
                       <span
                         className={`status-badge ${submission.status} ${submission.isFlagged ? "flagged" : ""}`}
                       >
-                        {submission.status === "locked"
-                          ? "🔒 "
-                          : submission.isFlagged
-                            ? "⚠ "
-                            : ""}
                         {getStatusLabel(submission.status)}
                       </span>
                     </td>
@@ -515,7 +507,7 @@ const ExamSubmissions = () => {
                 </span>
               </div>
               <button onClick={handleCloseModal} className="btn-close">
-                ✕
+                Close
               </button>
             </div>
 
@@ -604,7 +596,7 @@ const ExamSubmissions = () => {
                         onClick={startTotalScoreOverride}
                         title="Override total score"
                       >
-                        ✎ Override Score
+                        Override Score
                       </button>
                     </>
                   )}
@@ -719,7 +711,6 @@ const ExamSubmissions = () => {
                         <div className="grading-info">
                           {answer?.gradingMethod === "slm_semantic" && (
                             <div className="grading-badge slm">
-                              <span className="grading-badge-icon">🤖</span>
                               <div className="grading-badge-content">
                                 <strong>AI Semantic Grading</strong>
                                 <span>
@@ -738,7 +729,6 @@ const ExamSubmissions = () => {
                           )}
                           {answer?.gradingMethod === "manual" && (
                             <div className="grading-badge manual">
-                              <span className="grading-badge-icon">✎</span>
                               <div className="grading-badge-content">
                                 <strong>Manually Graded</strong>
                                 <span>
@@ -750,7 +740,6 @@ const ExamSubmissions = () => {
                           )}
                           {answer?.gradingMethod === "exact_match" && (
                             <div className="grading-badge auto">
-                              <span className="grading-badge-icon">⚡</span>
                               <div className="grading-badge-content">
                                 <strong>Auto-Graded</strong>
                                 <span>
@@ -833,7 +822,7 @@ const ExamSubmissions = () => {
                                 )
                               }
                             >
-                              ✎ Override Grade
+                              Override Grade
                             </button>
                           )}
                         </div>
@@ -918,7 +907,7 @@ const ExamSubmissions = () => {
                 {selectedSubmission.status === "locked" && (
                   <div className="lock-info-section">
                     <h4 className="lock-info-title">
-                      🔒 This exam was auto-locked
+                      This exam was auto-locked
                     </h4>
                     <p className="lock-info-reason">
                       <strong>Reason:</strong>{" "}
@@ -960,7 +949,7 @@ const ExamSubmissions = () => {
                       }}
                       className="btn-unlock"
                     >
-                      🔓 Unlock Submission
+                      Unlock Submission
                     </button>
                   </div>
                 )}
@@ -971,14 +960,14 @@ const ExamSubmissions = () => {
                     className="btn-approve"
                     disabled={selectedSubmission.status === "locked"}
                   >
-                    ✓ Approve
+                    Approve
                   </button>
                   <button
                     onClick={() => handleReviewSubmission(true)}
                     className="btn-flag"
                     disabled={selectedSubmission.status === "locked"}
                   >
-                    ⚠ Flag for Review
+                    Flag for Review
                   </button>
                 </div>
               </div>
