@@ -10,13 +10,14 @@ dotenv.config();
 const app = express();
 
 // Middleware
+// Middleware
 app.use(
   cors({
     origin: function (origin, callback) {
       // Allow requests with no origin (mobile apps, curl, etc.)
       if (!origin) return callback(null, true);
-      // Allow any localhost port
-      if (/^http:\/\/localhost:\d+$/.test(origin)) {
+      // Allow localhost OR your Vercel frontend URL
+      if (/^http:\/\/localhost:\d+$/.test(origin) || origin.includes('vercel.app')) {
         return callback(null, true);
       }
       callback(new Error("Not allowed by CORS"));
