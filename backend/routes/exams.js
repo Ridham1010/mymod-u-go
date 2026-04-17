@@ -16,8 +16,16 @@ router.post("/", verifyFirebaseToken, async (req, res) => {
         .json({ message: "Only teachers can create exams" });
     }
 
-    const { title, description, questions, scheduledAt, duration, settings, classroomId } =
+    let { title, description, questions, scheduledAt, duration, settings, classroomId } =
       req.body;
+
+    // Resolve classroomId from enrollmentCode if needed
+    if (classroomId && classroomId.length === 6) {
+      const classroom = await Classroom.findOne({ enrollmentCode: classroomId });
+      if (classroom) {
+        classroomId = classroom._id.toString();
+      }
+    }
 
     // If classroomId provided, verify teacher owns the classroom
     if (classroomId) {
@@ -168,9 +176,19 @@ router.put("/:id", verifyFirebaseToken, async (req, res) => {
       settings,
     } = req.body;
 
+    let { classroomId } = req.body;
+
+    if (classroomId && classroomId.length === 6) {
+      const classroom = await Classroom.findOne({ enrollmentCode: classroomId });
+      if (classroom) {
+        classroomId = classroom._id.toString();
+      }
+    }
+
     if (title) exam.title = title;
     if (description !== undefined) exam.description = description;
     if (questions) exam.questions = questions;
+    if (classroomId !== undefined) exam.classroomId = classroomId;
     if (scheduledAt) {
       exam.scheduledAt = new Date(scheduledAt);
       if (duration) {

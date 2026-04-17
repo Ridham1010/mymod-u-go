@@ -26,6 +26,9 @@ const CreateExam = () => {
   const [description, setDescription] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [duration, setDuration] = useState(60);
+  const [selectedClassroomId, setSelectedClassroomId] = useState(classroomId || "");
+  const [classroomCode, setClassroomCode] = useState("");
+  const [teacherClassrooms, setTeacherClassrooms] = useState([]);
   const [questions, setQuestions] = useState([
     {
       type: "mcq",
@@ -58,11 +61,26 @@ const CreateExam = () => {
 
   useEffect(() => {
     if (isEditing) fetchExam();
+    fetchTeacherClassrooms();
   }, [examId]);
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
+  };
+
+  const fetchTeacherClassrooms = async () => {
+    if (userProfile?.role === "teacher" || userProfile?.role === "admin") {
+      try {
+        const token = await getAuthToken();
+        const data = await examService.getClassrooms(token);
+        if (data.classrooms) {
+          setTeacherClassrooms(data.classrooms);
+        }
+      } catch (err) {
+        console.error("Failed to load classrooms", err);
+      }
+    }
   };
 
   /* ── data fetch ─────────────────────────────────────────── */
@@ -79,6 +97,7 @@ const CreateExam = () => {
         new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
       );
       setDuration(exam.duration);
+      setSelectedClassroomId(exam.classroomId || "");
       setQuestions(
         exam.questions.map((q) => ({
           type: q.type,
@@ -196,11 +215,16 @@ const CreateExam = () => {
     try {
       setSubmitting(true);
       const token = await getAuthToken();
+      let finalClassroomId = selectedClassroomId || null;
+      if (!finalClassroomId && classroomCode.trim()) {
+        finalClassroomId = classroomCode.trim();
+      }
+
       const examData = {
         title, description,
         scheduledAt: new Date(scheduledAt).toISOString(),
         duration, settings,
-        classroomId: classroomId || null,
+        classroomId: finalClassroomId,
         questions: questions.map((q) => ({
           type: q.type,
           question: q.question,
@@ -217,7 +241,9 @@ const CreateExam = () => {
         await examService.createExam(token, examData);
       }
       // Navigate back to classroom if we came from one, otherwise dashboard
-      if (classroomId) {
+      if (finalClassroomId && finalClassroomId.length === 24) {
+        navigate(`/classroom/${finalClassroomId}`);
+      } else if (classroomId) {
         navigate(`/classroom/${classroomId}`);
       } else {
         navigate("/dashboard");
@@ -287,6 +313,43 @@ const CreateExam = () => {
                 placeholder="e.g. Midterm Examination — Computer Networks"
                 required
               />
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="exam-classroom">Assign to Classroom</label>
+                <select
+                  id="exam-classroom"
+                  value={selectedClassroomId}
+                  onChange={(e) => {
+                    setSelectedClassroomId(e.target.value);
+                    if (e.target.value) setClassroomCode("");
+                  }}
+                  disabled={!!classroomCode.trim()}
+                >
+                  <option value="">Unassigned (No Classroom)</option>
+                  {teacherClassrooms.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name} {c.section ? `(${c.section})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="exam-classroom-code">Or Enter Classroom Code</label>
+                <input
+                  id="exam-classroom-code"
+                  type="text"
+                  value={classroomCode}
+                  onChange={(e) => {
+                    setClassroomCode(e.target.value.toUpperCase());
+                    if (e.target.value) setSelectedClassroomId("");
+                  }}
+                  placeholder="e.g. A1B2C3"
+                  maxLength={6}
+                  disabled={!!selectedClassroomId}
+                />
+              </div>
             </div>
 
             <div className="form-group">
